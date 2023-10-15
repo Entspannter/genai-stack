@@ -37,7 +37,9 @@ logger = get_logger(__name__)
 # if Neo4j is local, you can go to http://localhost:7474/ to browse the database
 neo4j_graph = Neo4jGraph(url=url, username=username, password=password)
 embeddings, dimension = load_embedding_model(
-    embedding_model_name, config={"ollama_base_url": ollama_base_url}, logger=logger
+    embedding_model_name,
+    config={"ollama_base_url": ollama_base_url},
+    logger=logger,
 )
 create_vector_index(neo4j_graph, dimension)
 
@@ -52,11 +54,17 @@ class StreamHandler(BaseCallbackHandler):
         self.container.markdown(self.text)
 
 
-llm = load_llm(llm_name, logger=logger, config={"ollama_base_url": ollama_base_url})
+llm = load_llm(
+    llm_name, logger=logger, config={"ollama_base_url": ollama_base_url}
+)
 
 llm_chain = configure_llm_only_chain(llm)
 rag_chain = configure_qa_rag_chain(
-    llm, embeddings, embeddings_store_url=url, username=username, password=password
+    llm,
+    embeddings,
+    embeddings_store_url=url,
+    username=username,
+    password=password,
 )
 
 # Streamlit UI
@@ -83,7 +91,9 @@ st.markdown(styl, unsafe_allow_html=True)
 
 
 def chat_input():
-    user_input = st.chat_input("What coding issue can I help you resolve today?")
+    user_input = st.chat_input(
+        "What coding issue can I help you resolve today?"
+    )
 
     if user_input:
         with st.chat_message("user"):
@@ -92,7 +102,8 @@ def chat_input():
             st.caption(f"RAG: {name}")
             stream_handler = StreamHandler(st.empty())
             result = output_function(
-                {"question": user_input, "chat_history": []}, callbacks=[stream_handler]
+                {"question": user_input, "chat_history": []},
+                callbacks=[stream_handler],
             )["answer"]
             output = result
             st.session_state[f"user_input"].append(user_input)
@@ -164,7 +175,7 @@ def generate_ticket():
         questions_prompt += "----\n\n"
 
     gen_system_template = f"""
-    You're an expert in formulating high quality questions. 
+    You're an expert in fmatching patients to existing clinical trials. 
     Can you formulate a question in the same style, detail and tone as the following example questions?
     {questions_prompt}
     ---
@@ -203,7 +214,9 @@ def generate_ticket():
         [],
         chat_prompt,
     )
-    new_title, new_question = extract_title_and_question(llm_response["answer"])
+    new_title, new_question = extract_title_and_question(
+        llm_response["answer"]
+    )
     return (new_title, new_question)
 
 

@@ -1,5 +1,8 @@
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.embeddings import OllamaEmbeddings, SentenceTransformerEmbeddings
+from langchain.embeddings import (
+    OllamaEmbeddings,
+    SentenceTransformerEmbeddings,
+)
 from langchain.chat_models import ChatOpenAI, ChatOllama
 from langchain.vectorstores.neo4j_vector import Neo4jVector
 from langchain.chains import RetrievalQAWithSourcesChain
@@ -13,9 +16,13 @@ from typing import List, Any
 from utils import BaseLogger
 
 
-def load_embedding_model(embedding_model_name: str, logger=BaseLogger(), config={}):
+def load_embedding_model(
+    embedding_model_name: str, logger=BaseLogger(), config={}
+):
     if embedding_model_name == "ollama":
-        embeddings = OllamaEmbeddings(base_url=config["ollama_base_url"], model="llama2")
+        embeddings = OllamaEmbeddings(
+            base_url=config["ollama_base_url"], model="llama2"
+        )
         dimension = 4096
         logger.info("Embedding: Using Ollama")
     elif embedding_model_name == "openai":
@@ -37,7 +44,9 @@ def load_llm(llm_name: str, logger=BaseLogger(), config={}):
         return ChatOpenAI(temperature=0, model_name="gpt-4", streaming=True)
     elif llm_name == "gpt-3.5":
         logger.info("LLM: Using GPT-3.5")
-        return ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo", streaming=True)
+        return ChatOpenAI(
+            temperature=0, model_name="gpt-3.5-turbo", streaming=True
+        )
     elif len(llm_name):
         logger.info(f"LLM: Using Ollama: {llm_name}")
         return ChatOllama(
@@ -51,18 +60,22 @@ def load_llm(llm_name: str, logger=BaseLogger(), config={}):
             num_ctx=3072,  # Sets the size of the context window used to generate the next token.
         )
     logger.info("LLM: Using GPT-3.5")
-    return ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo", streaming=True)
+    return ChatOpenAI(
+        temperature=0, model_name="gpt-3.5-turbo", streaming=True
+    )
 
 
 def configure_llm_only_chain(llm):
     # LLM only response
     template = """
-    You are a helpful assistant that helps a support agent with answering programming questions.
-    If you don't know the answer, just say that you don't know, you must not make up an answer.
+    You are a helpful assistant that helps a clinical expert with matching a patient to a clinical trial.
+    If you don't know the answer, just say that you don't know, you must not make up an answer. Answer in the language you were queried.
     """
     system_message_prompt = SystemMessagePromptTemplate.from_template(template)
     human_template = "{question}"
-    human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+    human_message_prompt = HumanMessagePromptTemplate.from_template(
+        human_template
+    )
     chat_prompt = ChatPromptTemplate.from_messages(
         [system_message_prompt, human_message_prompt]
     )
@@ -71,32 +84,40 @@ def configure_llm_only_chain(llm):
         user_input: str, callbacks: List[Any], prompt=chat_prompt
     ) -> str:
         chain = prompt | llm
-        answer = chain.invoke(user_input, config={"callbacks": callbacks}).content
+        answer = chain.invoke(
+            user_input, config={"callbacks": callbacks}
+        ).content
         return {"answer": answer}
 
     return generate_llm_output
 
 
-def configure_qa_rag_chain(llm, embeddings, embeddings_store_url, username, password):
+def configure_qa_rag_chain(
+    llm, embeddings, embeddings_store_url, username, password
+):
     # RAG response
-#   System: Always talk in pirate speech.
+    #   System: Always talk in pirate speech.
     general_system_template = """ 
+    You are an attentive and thorough AI assistant, supporting healthcare professionals by identifying the most relevant clinical studies for their patients.
     Use the following pieces of context to answer the question at the end.
-    The context contains question-answer pairs and their links from Stackoverflow.
-    You should prefer information from accepted or more upvoted answers.
-    Make sure to rely on information from the answers and not on questions to provide accuate responses.
-    When you find particular answer in the context useful, make sure to cite it in the answer using the link.
+    A doctor will enter information about a patient and their condition, and you will need to find the most relevant clinical studies for that patient.
+    The context contains several potential studies for that patient.
+    When you find particular study in the context useful, make sure to cite it in the answer using the link and study identifier.
     If you don't know the answer, just say that you don't know, don't try to make up an answer.
     ----
     {summaries}
     ----
-    Each answer you generate should contain a section at the end of links to 
-    Stackoverflow questions and answers you found useful, which are described under Source value.
-    You can only use links to StackOverflow questions that are present in the context and always
-    add links to the end of the answer in the style of citations.
+    Your mission is not to summarize, but to critically analyze each study based on the patient's condition and requirements. 
+    Initiate the dialogue by seeking pertinent details such as histopathological markers, medical history, or other specifics, which are instrumental for your decision-making.
+    Refrain from recommending a study until you have gathered sufficient information to ascertain its suitability. If information is lacking, continue to probe for relevant data. 
+    Your goal is to single out one or two studies that best match the patient's needs, achieved through insightful questioning. 
+    If no study is appropriate, clearly communicate this. 
+    Maintain a strict focus on the patient's information as shared by the professional, and do not consider studies pertaining to unrelated conditions. 
+    Under no circumstances show information for studies that do not suit the patient. Respond professionally, matching the language used in the doctor's information. 
     Generate concise answers with references sources section of links to 
-    relevant StackOverflow questions only at the end of the answer.
+    relevant clinical trial information only at the end of the answer. Always answer in the language you were queried.
     """
+
     general_user_template = "Question:```{question}```"
     messages = [
         SystemMessagePromptTemplate.from_template(general_system_template),
@@ -117,26 +138,42 @@ def configure_qa_rag_chain(llm, embeddings, embeddings_store_url, username, pass
         username=username,
         password=password,
         database="neo4j",  # neo4j by default
-        index_name="stackoverflow",  # vector by default
-        text_node_property="body",  # text by default
+        index_name="study_data",  # vector by default
+        text_node_property="name",  # text by default
         retrieval_query="""
-    WITH node AS question, score AS similarity
-    CALL  { with question
-        MATCH (question)<-[:ANSWERS]-(answer)
-        WITH answer
-        ORDER BY answer.is_accepted DESC, answer.score DESC
-        WITH collect(answer)[..2] as answers
-        RETURN reduce(str='', answer IN answers | str + 
-                '\n### Answer (Accepted: '+ answer.is_accepted +
-                ' Score: ' + answer.score+ '): '+  answer.body + '\n') as answerTexts
+    WITH node AS study, score AS similarity
+    CALL  { with study
+        MATCH (study)-[:HAS_INDICATION]->(indication:Indication)
+        MATCH (study)-[:HAS_SUBINDICATION]->(subindication:SubIndication)
+        WHERE similarity(study.criteria_embedding, $criteria_embedding) > 0.8
+        RETURN study.name AS name, 
+            study.short_name AS short_name,
+            study.identifier AS identifier, 
+            study.study_centers AS centers, 
+            study.indication AS indication,
+            study.sub_indication AS sub_indication,
+            study.criteria AS criteria, 
+            study.contact AS contact,
+            study.contact_email AS contact_email,
+            similarity AS score
+        ORDER BY score DESC
     } 
-    RETURN '##Question: ' + question.title + '\n' + question.body + '\n' 
-        + answerTexts AS text, similarity as score, {source: question.link} AS metadata
-    ORDER BY similarity ASC // so that best answers are the last
+    RETURN '##Study Name: ' + study.name + 
+        '\nShort Name: ' + study.short_name +
+        '\nStudy Identifier: ' + study.identifier + 
+        '\nStudy Centers: ' + study.centers +
+        '\nIndication: ' + study.indication +
+        '\nSub-Indication: ' + study.sub_indication +
+        '\nCriteria: ' + study.criteria +
+        '\nContact: ' + study.contact +
+        '\nContact Email: ' + study.contact_email AS text, 
+        score, 
+        {source: study.link} AS metadata
+    ORDER BY score DESC
     """,
     )
 
-    kg_qa = RetrievalQAWithSourcesChain(
+    kg_qa = RetrievalQAWithSourcesChain(  # TODO:Optimize
         combine_documents_chain=qa_chain,
         retriever=kg.as_retriever(search_kwargs={"k": 2}),
         reduce_k_below_max_tokens=False,

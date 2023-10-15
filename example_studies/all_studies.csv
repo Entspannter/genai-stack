@@ -1,0 +1,198 @@
+name,short_name,identifier,study_centers,indication,sub_indication,criteria,contact,contact_email
+Meteoroid Study,Meteoroid,NCT05271409,University Clinic Düsseldorf;,MOGAD,Serum positivity for MOG-IgG by a CBA,"- Participants aged ≥ 12 years at time of signing Informed Consent Form.
+- Confirmed diagnosis of MOGAD based on a range of criteria, including documented history of ≥2 MOGAD attacks and serum positivity for MOG-IgG.
+- EDSS score of 0–6.5 at screening.
+- History of ≥ 1 MOGAD relapse in the last 12 months or ≥ 2 attacks in the last 24 months.
+- Participants must either have no ongoing chronic IST or be on specific ongoing treatments.
+- Women of childbearing potential must either remain abstinent or use adequate contraception.
+-
+- Presence of AQP4-IgG in the serum.
+  - History of encephalitis unrelated to MOGAD.
+  - Specific MRI findings indicative of multiple sclerosis.
+  - Participants with a MOGAD relapse within 12 weeks prior to baseline with EDSS not equalling 0 at screening.
+  - Presence of any concomitant disease other than MOGAD that may require certain treatments.
+  - Use of a range of medications or treatments prior to screening (e.g., IVIg, PLEX, B-cell depleting agents).
+  - Pregnant or breastfeeding women.
+  - Presence of various infections including tuberculosis and hepatitis.
+  - Receipt of live or live attenuated vaccine within 6 weeks prior to baseline.
+  - History of certain medical conditions such as malignancies within the last 5 years, severe allergic reactions to biologic agents, and drug or alcohol abuse within 1 year.
+  - Any serious medical condition or abnormality that might jeopardize participant safety.",Marc Pawlitzki or Orhan Aktas,marcguenter.pawlitzki@med.uni-duesseldorf.de
+"Safety, Adherence and Persistence in a Real-World Cohort of German MS Patients Newly Treated With Ocrelizumab (CONFIDENCE)",CONFIDENCE,NaN,University Clinic Düsseldorf,Multiple Sclerosis,NaN,"- Male or female patients aged 18 or older.
+- Documented diagnosis of MS.
+- Type of MS can be:
+   - RMS 
+   - RRMS
+   - rSPMS
+   - early PPMS
+- The patient is newly treated with either Ocrevus or another MS-DMT (Alemtuzumab, Cladribin, Dimethylfumarat, Fingolimod, Natalizumab, and Teriflunomid) up to 30 days before or 60 days after joining the study.
+- Specifically for Germany: Patients who were originally enrolled in the Investigator Sponsored Study (ISS) “CLADBRAVE” (which was stopped) are allowed to roll over into CLADQoL, given they sign the Informed Consent Form of the CLADQoL study. Data from the CLADBRAVE study will be entered into the eCRF of the CLADQoL study.
+- The patient must sign an informed consent.
+- Participation in other interventional clinical trials studying DMTs against MS.
+- Administration of Ocrelizumab or the new MS treatment with another selected MS-DMT other than Ocrelizumab more than 30 days prior to joining the study.
+- Previous treatment with Rituximab or another anti-CD20 therapy against MS.",Marc Pawlitzki or Marcia Gasis,marcguenter.pawlitzki@med.uni-duesseldorf.de
+Relapsing Forms of Multiple Sclerosis (RMS) Study of Bruton's Tyrosine Kinase (BTK) Inhibitor Tolebrutinib (SAR442168) (GEMINI 1),GEMINI 1,NCT05269004,University Clinic Düsseldorf,Multiple Sclerosis,Relapsing Forms of Multiple Sclerosis (RMS),"- Age between 18 and 55.
+- Diagnosis of RMS.
+- EDSS score of ≤ 5.5 at the time of screening.
+- At least one of the following:
+  - ≥ 1 relapse in the current year
+  - ≥ 2 relapses in the past 2 years
+  - ≥ 1 Gd+ lesion in an MRI from the past year
+- No relapse within 30 days prior to inclusion.
+- No blood clotting disorder or major surgery within 4 weeks prior to screening.
+- Washout (WO) for certain MS medications including, but not limited to:
+   - Corticosteroids (WO: 1 month prior to screening)
+   - DMF, Sipo (WO: 1 month prior to inclusion)
+   - Igs, Fingo (WO: 3 months prior to inclusion)
+   - Natalizumab, Ocrelizumab & Ritux (WO: 6 months prior to inclusion)
+   - Mitoxantrone, Cyclophosphamide, Cladribine (WO: 2 years prior to inclusion)
+   - Alemtuzumab (WO: 4 years prior to inclusion)
+- Other medications to stop:
+   - Strong P450(CYP)3A- or CYP2C8-inhibitors
+   - Aspirin (STOP: 8 days before inclusion)
+   - Warfarin, Heparin, Dabigatran, Apixaban, Edoxaban, Rivaroxaban",Marc Pawlitzki,marcguenter.pawlitzki@med.uni-duesseldorf.de
+A Rollover Study to Evaluate the Long-Term Safety and Efficacy of Ocrelizumab In Patients With Multiple Sclerosis (OLERO),OLERO,NCT05269004,University Clinic Düsseldorf,Multiple Sclerosis,Not specified,"- Participant has signed the Informed Consent Form.
+- Participant was previously eligible for and participated in one of the Roche-sponsored Parent Studies (WA21092, WA21093, or WA25046), either receiving ocrelizumab as an Investigational Medicinal Product (IMP) or being in safety follow-up post treatment discontinuation.
+- For female participants of childbearing potential: Agreement to either abstain from heterosexual intercourse or use appropriate and acceptable contraception during the treatment period and for at least 6 months (or longer if the local label requires) post the final dose of ocrelizumab, as stipulated in the ocrelizumab package leaflet.
+- Concurrent participation in any clinical trial, apart from the Parent study.
+- Inability or unwillingness to adhere to the protocol requirements.
+Interventions:
+- Monitoring and assessing the outcomes and effects of ocrelizumab treatment on patients.
+Patient Demographics:
+- Gender: Not specified. However, criteria for female participants of childbearing potential are mentioned.
+- Age: Not specified.
+- Diagnosis: MS, with prior participation in one of the specified Roche-sponsored Parent Studies.","Marc Pawlitzki, Marcia Gasis",marcguenter.pawlitzki@med.uni-duesseldorf.de
+PERSEUS ,PERSEUS,EFC16035,Not specified,Multiple Sclerosis,PPMS,"- Age: Between 18 to 55 years
+- Diagnosis: PPMS
+- EDSS score: 2.0 – 6.5 during screening
+- Live vaccines up to 2 months before the first intake
+- Specific washout periods for various MS medications
+- Medications: Strong P450(CYP)3A- or CYP2C8-Inhibitors, Aspirin (STOP: 8 days before inclusion), Clopidogrel
+Interventions:
+- Drug: Daratumumab
+- Drug: VELCADE (Bortezomib)
+- Drug: Lenalidomide
+- Drug: Dexamethasone
+Patient Demographics:
+- Age: 18 to 55 years
+- Diagnosis: PPMS, with specific clinical and diagnostic criteria",Marc Pawlitzki and Marcia Gasis,Not specified
+Tysabri Observational Program (TOP),TOP,NCT00493298,University Clinic Düsseldorf,Multiple Sclerosis (MS),Not specified,"- Must provide written informed consent and comply with local law requirements.
+- Decision to treat with Tysabri must have been made prior to study enrollment.
+- Participants can have received a maximum of 3 Tysabri infusions before enrolling.
+- Must have a confirmed diagnosis of RRMS.
+- Must have experienced at least one relapse in the year before the study.
+- Age requirements must align with Tysabri's indication.
+- No history of positive anti-natalizumab antibodies.
+- No history of PML or other opportunistic infections and must not be at increased risk for such infections.
+- Cannot receive other immunomodulatory or immunosuppressive therapies while on Tysabri.
+- Not immunocompromised at enrollment.
+- No known active malignancies, except patients with completely excised basal cell carcinoma before the study.
+- No known hypersensitivity to natalizumab or its components.
+- Female patients must either be postmenopausal for at least a year, surgically sterile (excluding tubal ligation), or willing to use effective contraception during Tysabri treatment.
+- Women must not be breastfeeding or pregnant.
+Interventions:
+- Natalizumab treatment (Tysabri).
+Patient Demographics:
+- Males or females within the age range specified by Tysabri's indication.
+- Diagnosis: RRMS with specific clinical criteria.",Marc Pawlitzki,marcguenter.pawlitzki@med.uni-duesseldorf.de
+Chronic Inflammatory Demyelinating Polyneuropathy (CIDP) Study for PDY16744,PDY16744,NCT04658472,University Clinic Düsseldorf,CIDP,gG4 AutoAb NF155 and CNTN1,"- Age ≥ 18 years.
+- Confirmed or probable CIDP diagnosis (Typical, purely motoric CIDP, or Lewis-Sumner Syndrome).
+For SOC-Treated Patients:
+- Showed improvement under Standard of Care (SOC).
+- Stable on SOC (no change over 10% in dose and frequency) within the last 8 weeks.
+- Clinical worsening after interruption or dose reduction within 24 months before screening.
+For SOC-Refractory Patients:
+- No clinical improvement under SOC.
+- No IgGs 12 weeks before screening.
+- Permitted medications: azathioprine, methotrexate, muco-phenolate mofetil, cyclosporine, and oral corticosteroids at a stable dose of <20mg/day for ≥ 3 months before screening.
+For SOC-Naïve Patients:
+- No prior CIDP therapy.
+- No treatment with IVIg, SCIg, or corticosteroids for a minimum of 6 months before screening.
+- Presence of neuropathy from other origins (e.g., Sensory CIDP or DADS).
+- Poorly controlled diabetes with HbA1c > 7%.
+- Diagnosis of Systemic Lupus Erythematosus (SLE).
+- Worsening of CIDP within 6 weeks post-vaccination.
+- No plasma exchange within 12 weeks before screening.
+- Absence of treatments with a range of specified medications within 6 months before D1 or 12 weeks before screening (such as Ritux, Ocrelizumab, azathioprine, methotrexate, and several others).
+- No treatment with specific complement inhibitors (e.g., eculizumab) within 12 weeks before screening.
+- Not testing positive for infectious diseases markers like HBsAg, anti-HBcAb, anti-HCV, anti-HIV1, anti-HIV2.",Marc Pawlitzki,marcguenter.pawlitzki@med.uni-duesseldorf.de
+Investigation into the Effects of Treatments on Myasthenia Gravis (Expand Alexion2050),Expand Alexion2050,NCT05218096,University Clinic Düsseldorf,MG,NaN,"- Age ≥ 18 years.
+- Diagnosis of MG at least 90 days before screening.
+- MG-ADL score of » 5 (at both screening and Day 1).
+- Stable on any of the following medications:
+    - AZA (at least 6 months, stable for a minimum of 60 days).
+    - MMF, MTX, CP (at least 3 months, stable for a minimum of 30 days).
+    - Oral corticosteroids (max. 20 mg/day) (stable for at least 28 days).
+    - Acetylcholinesterase inhibitors (stable for at least 14 days).
+- Received a Meningococcal vaccination within 3 years before Day 1.
+- Positive for HIV, HBSAg, or anti-HCV.
+- Treatment with IVIg or SCig within 28 days before screening.
+- Plasma exchange (PE) or plasmapheresis (PP) within 28 days before screening.
+- Rituximab treatment within 6 months before screening.
+- Tacrolimus or Cyclosporine treatment within 28 days before screening.
+- Complement inhibitors treatment (e.g., Eculizumab, Ravulizumab).
+- CYP3A inducers or inhibitors within 2 weeks or 5 half-lives before Day 1.
+- Convulsant medications including, but not limited to, Meperidine, Tramadol, Antipsychotics, Clozapine, Olanzapine, Lithium, Tricyclic antidepressants, Bupropion, and Theophylline.","Marc Pawlitzki, Marcia Gasis, Tobias Ruck",marcguenter.pawlitzki@med.uni-duesseldorf.de
+Evaluation of ALXN1210 in Patients with Myasthenia Gravis (Flex ALXN1210),Flex ALXN1210,NaN,University Clinic Düsseldorf,MG,NaN,"- Age > 18 years.
+- Intolerance or inadequate response to 2 or more Disease-Modifying (DM) therapies, including glucocorticoids.
+- Specific stability and dosage criteria for several medications including Azathioprine, Cyclosporine, Glucocorticoids, Hydroxychloroquine, Leflunamide, Methotrexate, Mycophenolate mofetil/mycophenolic acid, Sulfasalazine, and Tacrolimus.
+- Disease Severity:
+    - MMT-8 ≤ 142/150, along with two of the following:
+        - PatGA > 2.0 cm
+        - PhYSGA > 2.0 cm
+        - HAO ≥ 0.25
+    - Elevated muscle enzyme levels ≥ 1.3x
+    - Global extramuscular disease activity > 2.0 cm
+- Disease activity criteria including muscle or skin biopsy, active myositis (via EMG or MRI), elevated muscle enzyme levels, or active skin-DM (CDASI Active Score > 7 during screening).
+- Vaccination against N. meningitidis within 3 years prior to the first dose.
+- Cancer-associated myositis within 3 years post-cancer diagnosis, exceptions for specific carcinomas.
+- Patients with significant muscle damage, specifically muscle atrophy.
+- Infections with N. meningitidis or HIV.
+- Specific medication dosages and the necessary washout periods for various medications, such as Azathioprine, Cyclosporine, Hydroxychloroquine, and more.
+- Initiation of a new muscle strengthening fitness program or changes to an existing program within 4 weeks prior to D1 (allowed in OLE).","Marc Pawlitzki, Marcia Gasis, Tobias Ruck",marcguenter.pawlitzki@med.uni-duesseldorf.de
+Evaluation of ALXN1720 in Patients with Myasthenia Gravis (Prevail ALXN1720),Prevail ALXN1720,NCT05556096,University Clinic Düsseldorf,Myasthenia Gravis,Generalized Myasthenia Gravis,"- Age ≥ 18 years.
+- Diagnosis of gMG at least 90 days prior to screening.
+- MG-ADL score of more than 5 during both screening and on Day 1 (D1).
+- Stability on specific medications:
+    - AZA: Taken for at least 6 months and stable for at least 60 days.
+    - MMF, MTX, CP: Taken for at least 3 months and stable for at least 30 days.
+    - Oral corticosteroids (max. 20 mg/d): Stable for at least 28 days.
+    - Acetylcholinesterase inhibitors: Stable for at least 14 days.
+- Received Meningococcal vaccination within 3 years prior to D1.
+- Presence of HIV, HBsAg, or anti-HCV.
+- Patients who have received the following treatments:
+    - Complement inhibitor: Within less than 5 half-lives before randomization on D1.
+    - FcRn inhibitor: Within less than 5 half-lives prior to D1.
+    - Rituximab, ocrelizumab, or other B cell-depleting therapies: Received or scheduled within 6 months prior to D1.
+    - PP/PE as maintenance therapy: Received or scheduled within 6 months prior to D1.
+- Underwent thymectomy or any other thymic surgery within 12 months before screening.
+- History of malignancy within the past 5 years of screening.","Marc Pawlitzki, Marcia Gasis",marcguenter.pawlitzki@med.uni-duesseldorf.de
+Amasia Study - Evaluation of the Efficacy and Safety of the Treatment in Patients with Multiple Sclerosis (MS),AMASIA,NaN,University Clinic Düsseldorf,Multiple Sclerosis,Secondary Progressive Multiple Sclerosis,"- Age ≥ 18 years.
+- Diagnosis of SPMS.
+- Initial administration of Siponimod.
+- Pregnancy.
+- Participation in the PANGAEA 2.0 EVOLUTION study.
+- Previous therapy with Siponimod.","Marc Pawlitzki, Marcia Gasis",marcguenter.pawlitzki@med.uni-duesseldorf.de
+"Study to Evaluate Efficacy, Safety, and Tolerability of IMU-838 in Patients With Progressive Multiple Sclerosis (CALLIPER)",CALLIPER,NCT05054140,University Clinic Düsseldorf,Multiple Sclerosis,Progressive Multiple Sclerosis,"- Age between 18 and ≤ 65 years.
+- Diagnosis of PMS.
+- EDSS score of 3.0 - 6.5 at the time of screening.
+- Live vaccines up to 30 days prior to ICF signature.
+- Positive for TB or HIV at screening.
+- Specific washout periods for MS medications including, but not limited to:
+    - 7 days prior: IFNB, GA
+    - 30 days prior: DMF, PEG-IFN, depot-GA
+    - 3 months prior: Plasmapheresis, various cytokine therapies (excluding IFN), Methotrexate, S1P-Receptor Modulators, Tofacitinib, and others mentioned in the original text.
+    - 6 months prior: Natalizumab, Calcineurin-inhibitors, IGs, Azathioprine
+    - 1 year prior: Mitoxandrone (up to 60 mg/m²), Teriflunomid, Leflunomide, anti-CD19/20
+4. Other medications without a specified washout: Alemtuzumab, Belimumab, Cladribine, Total Lymphoid Irradiation, Bone Marrow or Stem cell transplantation, Cyclophasphamide, Mitoxandrone (greater than 60 mg/m²)",Marc Pawlitzki,marcguenter.pawlitzki@med.uni-duesseldorf.de
+Evaluation of Quality of Life in MS Patients Using Cladribine  - Evaluation of Quality of Life (QoL) in Subjects With Highly Active Relapsing Multiple Sclerosis (CladQol),CladQoL,CladQol,University Clinic Düsseldorf,Multiple Sclerosis,NaN,"- Male or female patients aged 18-55 years due to the SDMT cognition test's validation limits for this age group.
+- All patients must be eligible to receive Cladribine tablets as per the registered label.
+- Patients using Cladribine tablets for the first time (should be included within 4 weeks after the first intake or prior to the start of the second treatment week).
+- Specifically for Germany: Patients who were originally enrolled in the Investigator Sponsored Study (ISS) “CLADBRAVE” (which was stopped) are allowed to roll over into CLADQoL, given they sign the Informed Consent Form of the CLADQoL study. Data from the CLADBRAVE study will be entered into the eCRF of the CLADQoL study.
+- The patient must sign an informed consent.
+- Current pregnancy or breastfeeding.
+- Any contraindications to the use of Cladribine tablets as specified in the Summary of Product Characteristics.",Marc Pawlitzki,marcguenter.pawlitzki@med.uni-duesseldorf.de
+Evaluation of Cladribine Efficacy in RMS Patients Over Extended Period (CLIP-5),CLIP-5,NaN,University Clinic Düsseldorf,Multiple Sclerosis,Relapsing-Remitting Multiple Sclerosis,"- Diagnosis of Relapsing-Remitting Multiple Sclerosis (RMS).
+- Completed 2 cycles of Cladribine and currently in Month 48.
+- 48 to 60 months have passed since the first intake of Cladribine.
+- Switch to another Disease Modifying Therapy (DMT) after the first intake of Cladribine.
+- Intake of Cladribine in Year 3 or Year 4.",Marc Pawlitzki or Marcia Gasis,marcguenter.pawlitzki@med.uni-duesseldorf.de
