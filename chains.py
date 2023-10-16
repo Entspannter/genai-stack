@@ -135,36 +135,47 @@ def configure_qa_rag_chain(
         prompt=qa_prompt,
     )
 
-    # Vector + Knowledge Graph response
-    kg = Neo4jVector.from_existing_index(
+    #     # Vector + Knowledge Graph response
+    #     kg = Neo4jVector.from_existing_index(
+    #         embedding=embeddings,
+    #         url=embeddings_store_url,
+    #         username=username,
+    #         password=password,
+    #         database="neo4j",
+    #         index_name="study_data",
+    #         text_node_property="name",
+    #         retrieval_query="""
+    # WITH node AS study, score AS similarity
+    # CALL {
+    #   WITH study
+    #   MATCH (study)-[:HAS_CRITERIA]->(criteria:Criteria)
+    #   RETURN {
+    #     studyText: '##Study Name: ' + study.name +
+    #                '\nShort Name: ' + study.short_name +
+    #                '\nStudy Identifier: ' + study.identifier +
+    #                '\nStudy Centers: ' + study.study_centers +
+    #                '\nIndication: ' + study.indication +
+    #                '\nSub-Indication: ' + study.subindication +
+    #                '\nCriteria: ' + criteria.value +
+    #                '\nContact: ' + study.contact +
+    #                '\nContact Email: ' + study.contact_email,
+    #     metadata: study.metadata
+    #   } AS studyData
+    # }
+    # RETURN studyData.studyText AS text, studyData.metadata AS metadata, similarity as score
+    # ORDER BY similarity ASC // so that best answers are the last
+
+    #         """,
+    #     )
+
+    kg = Neo4jVector.from_existing_graph(
         embedding=embeddings,
         url=embeddings_store_url,
         username=username,
         password=password,
-        database="neo4j",
-        index_name="study_data",
-        text_node_property="name",
-        retrieval_query="""
-WITH node AS study, score AS similarity
-CALL {
-  WITH study
-  MATCH (study)-[:HAS_CRITERIA]->(criteria:Criteria)
-  RETURN '##Study Name: ' + study.name +
-         '\nShort Name: ' + study.short_name +
-         '\nStudy Identifier: ' + study.identifier +
-         '\nStudy Centers: ' + study.study_centers +
-         '\nIndication: ' + study.indication +
-         '\nSub-Indication: ' + study.subindication +
-         '\nCriteria: ' + criteria.value +
-         '\nContact: ' + study.contact +
-         '\nContact Email: ' + study.contact_email AS studyText
-} 
-RETURN studyText AS text, similarity as score
-ORDER BY similarity ASC // so that best answers are the last
-
-
-
-        """,
+        node_label="Study",
+        text_node_properties=["name", "metadata"],
+        embedding_node_property="embedding",
     )
 
     kg_qa = RetrievalQAWithSourcesChain(  # TODO:Optimize
