@@ -7,6 +7,10 @@ from langchain.chat_models import ChatOpenAI, ChatOllama
 from langchain.vectorstores.neo4j_vector import Neo4jVector
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain.chains.qa_with_sources import load_qa_with_sources_chain
+from langchain.memory import (
+    ConversationBufferMemory,
+)  # TODO: Switch the RAG / Langchain Pipline to these models!
+from langchain.chains import ConversationalRetrievalChain
 from langchain.prompts.chat import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
@@ -118,7 +122,7 @@ def configure_qa_rag_chain(
     relevant clinical trial information only at the end of the answer. Always answer in the language you were queried.
     """
 
-    general_user_template = "Question:```{question}```"
+    general_user_template = "Patient description:```{question}```"
     messages = [
         SystemMessagePromptTemplate.from_template(general_system_template),
         HumanMessagePromptTemplate.from_template(general_user_template),
@@ -137,45 +141,35 @@ def configure_qa_rag_chain(
         url=embeddings_store_url,
         username=username,
         password=password,
-        database="neo4j",  # neo4j by default
-        index_name="study_data",  # vector by default
-        text_node_property="name",  # text by default
+        database="neo4j",
+        index_name="study_data",
+        text_node_property="name",
         retrieval_query="""
-    WITH node AS study, score AS similarity
-    CALL  { with study
-        MATCH (study)-[:HAS_INDICATION]->(indication:Indication)
-        MATCH (study)-[:HAS_SUBINDICATION]->(subindication:SubIndication)
-        WHERE similarity(study.criteria_embedding, $criteria_embedding) > 0.8
-        RETURN study.name AS name, 
-            study.short_name AS short_name,
-            study.identifier AS identifier, 
-            study.study_centers AS centers, 
-            study.indication AS indication,
-            study.sub_indication AS sub_indication,
-            study.criteria AS criteria, 
-            study.contact AS contact,
-            study.contact_email AS contact_email,
-            similarity AS score
-        ORDER BY score DESC
-    } 
-    RETURN '##Study Name: ' + study.name + 
-        '\nShort Name: ' + study.short_name +
-        '\nStudy Identifier: ' + study.identifier + 
-        '\nStudy Centers: ' + study.centers +
-        '\nIndication: ' + study.indication +
-        '\nSub-Indication: ' + study.sub_indication +
-        '\nCriteria: ' + study.criteria +
-        '\nContact: ' + study.contact +
-        '\nContact Email: ' + study.contact_email AS text, 
-        score, 
-        {source: study.link} AS metadata
-    ORDER BY score DESC
-    """,
+WITH node AS study, score AS similarity
+CALL {
+  WITH study
+  MATCH (study)-[:HAS_CRITERIA]->(criteria:Criteria)
+  RETURN '##Study Name: ' + study.name +
+         '\nShort Name: ' + study.short_name +
+         '\nStudy Identifier: ' + study.identifier +
+         '\nStudy Centers: ' + study.study_centers +
+         '\nIndication: ' + study.indication +
+         '\nSub-Indication: ' + study.subindication +
+         '\nCriteria: ' + criteria.value +
+         '\nContact: ' + study.contact +
+         '\nContact Email: ' + study.contact_email AS studyText
+} 
+RETURN studyText AS text, similarity as score
+ORDER BY similarity ASC // so that best answers are the last
+
+
+
+        """,
     )
 
     kg_qa = RetrievalQAWithSourcesChain(  # TODO:Optimize
         combine_documents_chain=qa_chain,
-        retriever=kg.as_retriever(search_kwargs={"k": 2}),
+        retriever=kg.as_retriever(search_kwargs={"k": 5}),
         reduce_k_below_max_tokens=False,
         max_tokens_limit=3375,
     )

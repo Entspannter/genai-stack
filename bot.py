@@ -11,7 +11,6 @@ from langchain.prompts.chat import (
 from langchain.graphs import Neo4jGraph
 from dotenv import load_dotenv
 from utils import (
-    extract_title_and_question,
     create_vector_index,
 )
 from chains import (
@@ -92,7 +91,7 @@ st.markdown(styl, unsafe_allow_html=True)
 
 def chat_input():
     user_input = st.chat_input(
-        "What coding issue can I help you resolve today?"
+        "Please describe your patient for optimal matching..."
     )
 
     if user_input:

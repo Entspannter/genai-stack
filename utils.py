@@ -8,25 +8,10 @@ class BaseLogger:
 
 
 def create_vector_index(driver, dimension: int) -> None:
-    # Vector index for Studies
-    index_query_study = "CALL db.index.vector.createNodeIndex('study_data', 'Study', 'embedding', $dimension, 'cosine')"
+    index_query = "CALL db.index.vector.createNodeIndex('study_data', 'Study', 'embedding', $dimension, 'cosine')"
     try:
-        driver.query(index_query_study, {"dimension": dimension})
-    except:  # Index already exists
-        pass
-
-    # Vector index for Criteria
-    index_query_criteria = "CALL db.index.vector.createNodeIndex('criteria_data', 'Criteria', 'embedding', $dimension, 'cosine')"
-    try:
-        driver.query(index_query_criteria, {"dimension": dimension})
-    except:  # Index already exists
-        pass
-
-    # Vector index for Indication
-    index_query_indication = "CALL db.index.vector.createNodeIndex('indication_data', 'Indication', 'embedding', $dimension, 'cosine')"
-    try:
-        driver.query(index_query_indication, {"dimension": dimension})
-    except:  # Index already exists
+        driver.query(index_query, {"dimension": dimension})
+    except:  # Already exists
         pass
 
 

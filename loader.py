@@ -1,13 +1,13 @@
 import os
 from dotenv import load_dotenv
 from langchain.graphs import Neo4jGraph
-from langchain.document_loaders import CSVLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 import streamlit as st
 from streamlit.logger import get_logger
 from chains import load_embedding_model
 from utils import create_constraints, create_vector_index
 import traceback
+import pandas as pd
+import uuid
 
 load_dotenv(".env")
 
@@ -34,66 +34,123 @@ create_constraints(neo4j_graph)
 create_vector_index(neo4j_graph, dimension)
 
 
-def load_csv_data(filename=str) -> None:
-    csv_loader = CSVLoader(filename)
-    data = csv_loader.load()
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=1000, chunk_overlap=200
-    )
-    # Extract raw text from Document objects
-    raw_texts = [document.page_content for document in data]
-    st.text(raw_texts)
+def add_embeddings_to_study(study_dict: dict) -> dict:
+    """
+    Add embeddings to the study dictionary by considering all its fields.
+    """
+    # Concatenate all the values in the study_dict to form a single string
+    study_text = "\n".join([str(val) for val in study_dict.values()])
 
-    # Split the texts
-    split_documents = text_splitter.create_documents(raw_texts)
+    # Add embeddings
+    study_dict["embedding"] = embeddings.embed_query(study_text)
 
-    # Extract raw text from split Document objects
-    split_texts = [document.page_content for document in split_documents]
+    return study_dict
 
-    # Check type of split_texts for debugging
-    st.text(
-        type(split_texts[0])
-    )  # This should ideally print <class 'str'> for all elements
 
-    # Embed the split texts
-    embedding_results = embeddings.embed_documents(split_texts)
+def generate_unique_id():
+    return "STUDYMATCH-" + str(uuid.uuid4())
 
-    # Add embeddings back to original data. You might have to adjust this based on the actual structure and requirement of your 'data'
-    for item, embedding in zip(data, embedding_results):
-        item.embedding = embedding
 
-    insert_csv_data(data)
+def load_csv_data(filename: str) -> None:
+    # Load CSV into a pandas DataFrame
+    df = pd.read_csv(filename)
+    df = df.fillna("UNKNOWN_VALUE")
+
+    all_studies = []  # A list to store all study dictionaries with embeddings
+
+    # Iterate through each row (study)
+    for _, row in df.iterrows():
+        # Split contact and email by ';' if they are strings
+        contacts = (
+            row["contact"].split(";")
+            if isinstance(row["contact"], str)
+            else [row["contact"]]
+        )
+        contact_emails = (
+            row["contact_email"].split(";")
+            if isinstance(row["contact_email"], str)
+            else [row["contact_email"]]
+        )
+
+        # Ensure contacts and contact_emails have the same length
+        while len(contact_emails) < len(contacts):
+            contact_emails.append("UNKNOWN_VALUE")
+
+        study_dict = {
+            "name": row["name"],
+            "short_name": row["short_name"],
+            "identifier": row["identifier"]
+            if row["identifier"] != "UNKNOWN_VALUE"
+            else generate_unique_id(),
+            "study_centers": row["study_centers"].split(";")
+            if isinstance(row["study_centers"], str)
+            else [row["study_centers"]],
+            "indication": row["indication"],
+            "sub_indication": row["sub_indication"],
+            "criteria": list(
+                filter(
+                    None,
+                    [
+                        criterion.strip()
+                        for criterion in row["criteria"].split("\n")
+                    ],
+                )
+            ),
+            "contacts": contacts,
+            "contact_emails": contact_emails,
+            "metadata": [
+                "stored_by_admin",
+            ],  # Add the metadata field here
+        }
+
+        # Add embeddings
+        study_with_embeddings = add_embeddings_to_study(study_dict)
+        all_studies.append(study_with_embeddings)
+
+    # Insert the studies into Neo4j
+    insert_csv_data(all_studies)
 
 
 def insert_csv_data(data: list) -> None:
     import_query = """
     UNWIND $data AS study
-    MERGE (s:Study {name: study.name, short_name: study.short_name, embedding: study.embedding})
+    MERGE (s:Study {name: study.name, short_name: study.short_name, embedding: study.embedding, metadata: study.metadata})
     ON CREATE SET s.identifier = study.identifier
-    MERGE (center:StudyCenter {name: study.study_centers})
-    MERGE (ind:Indication {name: study.indication})
-    MERGE (subInd:SubIndication {name: study.sub_indication})
-    MERGE (contact:Contact {name: study.contact, email: study.contact_email})
 
+    WITH study, s
+    UNWIND study.study_centers AS center_name
+    MERGE (center:StudyCenter {name: center_name})
     MERGE (s)-[:CONDUCTED_AT]->(center)
-    MERGE (s)-[:HAS_INDICATION]->(ind)
-    MERGE (s)-[:HAS_SUBINDICATION]->(subInd)
-    MERGE (s)-[:HAS_CONTACT]->(contact)
 
-    WITH study.criteria AS criteria_list, s
-    UNWIND split(criteria_list, "\n") AS criteria_item
-    MERGE (c:Criteria {description: criteria_item.trim()})
+    WITH study, s
+    UNWIND study.indication AS indication_name
+    MERGE (ind:Indication {name: indication_name})
+    MERGE (s)-[:HAS_INDICATION]->(ind)
+
+    WITH study, s
+    UNWIND study.sub_indication AS sub_ind_name
+    MERGE (subInd:SubIndication {name: sub_ind_name})
+    MERGE (s)-[:HAS_SUBINDICATION]->(subInd)
+
+    WITH study, s, study.contacts as contacts, study.contact_emails as emails
+    FOREACH (i in range(0, size(contacts) - 1) |
+        MERGE (contact:Contact {name: contacts[i]})
+        MERGE (s)-[rel:HAS_CONTACT {email: emails[i]}]->(contact)
+    )
+
+    WITH study, s
+    UNWIND study.criteria AS criteria_item
+    MERGE (c:Criteria {description: criteria_item})
     MERGE (s)-[:HAS_CRITERIA]->(c)
     """
-    print("Made it here")
     neo4j_graph.query(import_query, {"data": data})
-    print("Query succesful")
 
 
 def render_page():
     st.header("Study Loader 4")
     st.subheader("Upload study data to load into Neo4j")
     st.caption("Go to http://localhost:7474/ to explore the graph.")
+
     # Check if 'button_pressed' is not in the session state
     if "button_pressed" not in st.session_state:
         st.session_state.button_pressed = False
@@ -103,23 +160,24 @@ def render_page():
 
     if st.session_state.button_pressed:
         print("Button pressed, attempting to load data...")
-        try:
-            print("Inside try block")
-            load_csv_data(filename="example_studies/all_studies.csv")
-            st.success("Import successful ✅")
-            st.caption("Data model")
-            st.caption(
-                "Go to http://localhost:7474/ to interact with the database"
-            )
-            st.session_state.button_pressed = (
-                False  # Reset the button state after the action is completed
-            )
-        except Exception as e:
-            print("test print")
-            st.error(f"Error: {e} 🚨")
-            st.error(traceback.format_exc())
-            st.error(f"WDIR: {os.getcwd()}")
-            st.error(f"DIR LS: {os.listdir()}")
+        with st.spinner(
+            "Importing data... Please wait 🕐"
+        ):  # This will show a spinner until the code inside completes
+            try:
+                print("Inside try block")
+                load_csv_data(filename="example_studies/all_studies.csv")
+                st.success("Import successful ✅")
+                st.caption("Data model")
+                st.caption(
+                    "Go to http://localhost:7474/ to interact with the database"
+                )
+                st.session_state.button_pressed = False  # Reset the button state after the action is completed
+            except Exception as e:
+                print("test print")
+                st.error(f"Error: {e} 🚨")
+                st.error(traceback.format_exc())
+                st.error(f"WDIR: {os.getcwd()}")
+                st.error(f"DIR LS: {os.listdir()}")
 
 
 render_page()
