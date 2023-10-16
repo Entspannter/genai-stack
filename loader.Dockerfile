@@ -11,6 +11,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 RUN pip install --upgrade -r requirements.txt
+# Add this line to copy the example_studies directory to your Docker image
+COPY example_studies ./example_studies
+
 
 COPY loader.py .
 COPY utils.py .

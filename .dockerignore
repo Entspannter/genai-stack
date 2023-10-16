@@ -3,4 +3,5 @@
 !requirements.txt
 !images/*
 !front-end/*
+!example_studies/*
 front-end/node_modules/*
