@@ -1,0 +1,27 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+openai = "*"
+python-dotenv = "*"
+wikipedia = "*"
+tiktoken = "*"
+neo4j = "*"
+streamlit = "*"
+sentence-transformers = "==2.2.2"
+pillow = "*"
+fastapi = "*"
+torch = "==2.0.1"
+pydantic = "*"
+uvicorn = "*"
+sse-starlette = "*"
+ipykernel = "*"
+langchain = "*"
+chromadb = "*"
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"

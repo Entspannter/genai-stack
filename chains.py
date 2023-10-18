@@ -101,25 +101,30 @@ def configure_qa_rag_chain(
 ):
     # RAG response
     #   System: Always talk in pirate speech.
-    general_system_template = """ 
-    You are an attentive and thorough AI assistant, supporting healthcare professionals by identifying the most relevant clinical studies for their patients.
-    Use the following pieces of context to answer the question at the end.
-    A doctor will enter information about a patient and their condition, and you will need to find the most relevant clinical studies for that patient.
-    The context contains several potential studies for that patient.
-    When you find particular study in the context useful, make sure to cite it in the answer using the link and study identifier.
-    If you don't know the answer, just say that you don't know, don't try to make up an answer.
+    # general_system_template = """
+    # You are an attentive and thorough AI assistant, supporting healthcare professionals by identifying the most relevant clinical studies for their patients.
+    # Use the following pieces of context to answer the question at the end.
+    # A doctor will enter information about a patient and their condition, and you will need to find the most relevant clinical studies for that patient.
+    # The context contains several potential studies for that patient.
+    # When you find particular study in the context useful, make sure to cite it in the answer using the link and study identifier.
+    # If you don't know the answer, just say that you don't know, don't try to make up an answer.
+    # ----
+    # {summaries}
+    # ----
+    # Your mission is not to summarize, but to critically analyze each study based on the patient's condition and requirements.
+    # Initiate the dialogue by seeking pertinent details such as histopathological markers, medical history, or other specifics, which are instrumental for your decision-making.
+    # Refrain from recommending a study until you have gathered sufficient information to ascertain its suitability. If information is lacking, continue to probe for relevant data.
+    # Your goal is to single out one or two studies that best match the patient's needs, achieved through insightful questioning.
+    # If no study is appropriate, clearly communicate this.
+    # Maintain a strict focus on the patient's information as shared by the professional, and do not consider studies pertaining to unrelated conditions.
+    # Under no circumstances show information for studies that do not suit the patient. Respond professionally, matching the language used in the doctor's information.
+    # Generate concise answers with references sources section of links to
+    # relevant clinical trial information only at the end of the answer. Always answer in the language you were queried.
+    # """
+    general_system_template = """You are a helpful AI agent that names all potential studies for a patient. In the following you get a summary of all studies that suite your patient. Please name them:
     ----
     {summaries}
     ----
-    Your mission is not to summarize, but to critically analyze each study based on the patient's condition and requirements. 
-    Initiate the dialogue by seeking pertinent details such as histopathological markers, medical history, or other specifics, which are instrumental for your decision-making.
-    Refrain from recommending a study until you have gathered sufficient information to ascertain its suitability. If information is lacking, continue to probe for relevant data. 
-    Your goal is to single out one or two studies that best match the patient's needs, achieved through insightful questioning. 
-    If no study is appropriate, clearly communicate this. 
-    Maintain a strict focus on the patient's information as shared by the professional, and do not consider studies pertaining to unrelated conditions. 
-    Under no circumstances show information for studies that do not suit the patient. Respond professionally, matching the language used in the doctor's information. 
-    Generate concise answers with references sources section of links to 
-    relevant clinical trial information only at the end of the answer. Always answer in the language you were queried.
     """
 
     general_user_template = "Patient description:```{question}```"
@@ -135,53 +140,54 @@ def configure_qa_rag_chain(
         prompt=qa_prompt,
     )
 
-    #     # Vector + Knowledge Graph response
-    #     kg = Neo4jVector.from_existing_index(
-    #         embedding=embeddings,
-    #         url=embeddings_store_url,
-    #         username=username,
-    #         password=password,
-    #         database="neo4j",
-    #         index_name="study_data",
-    #         text_node_property="name",
-    #         retrieval_query="""
-    # WITH node AS study, score AS similarity
-    # CALL {
-    #   WITH study
-    #   MATCH (study)-[:HAS_CRITERIA]->(criteria:Criteria)
-    #   RETURN {
-    #     studyText: '##Study Name: ' + study.name +
-    #                '\nShort Name: ' + study.short_name +
-    #                '\nStudy Identifier: ' + study.identifier +
-    #                '\nStudy Centers: ' + study.study_centers +
-    #                '\nIndication: ' + study.indication +
-    #                '\nSub-Indication: ' + study.subindication +
-    #                '\nCriteria: ' + criteria.value +
-    #                '\nContact: ' + study.contact +
-    #                '\nContact Email: ' + study.contact_email,
-    #     metadata: study.metadata
-    #   } AS studyData
-    # }
-    # RETURN studyData.studyText AS text, studyData.metadata AS metadata, similarity as score
-    # ORDER BY similarity ASC // so that best answers are the last
-
-    #         """,
-    #     )
-
-    kg = Neo4jVector.from_existing_graph(
+    # Vector + Knowledge Graph response
+    kg = Neo4jVector.from_existing_index(
         embedding=embeddings,
         url=embeddings_store_url,
         username=username,
         password=password,
-        node_label="Study",
-        text_node_properties=["name", "metadata"],
-        embedding_node_property="embedding",
+        database="neo4j",
+        index_name="study_data",
+        text_node_property="name",
+        retrieval_query="""
+    WITH node AS study, score AS similarity
+    CALL {
+      WITH study
+      MATCH (study)-[:HAS_CRITERIA]->(criteria:Criteria)
+      RETURN {
+        studyText: '##Study Name: ' + study.name +
+                   '\nShort Name: ' + study.short_name +
+                   '\nStudy Identifier: ' + study.identifier +
+                   '\nStudy Centers: ' + study.study_centers +
+                   '\nIndication: ' + study.indication +
+                   '\nSub-Indication: ' + study.subindication +
+                   '\nCriteria: ' + criteria.value +
+                   '\nContact: ' + study.contact +
+                   '\nContact Email: ' + study.contact_email,
+        metadata: study.metadata
+      } AS studyData
+    }
+    RETURN studyData.studyText AS text, studyData.metadata AS metadata, similarity as score
+    ORDER BY similarity ASC // so that best answers are the last
+
+            """,
     )
+
+    # kg = Neo4jVector.from_existing_graph(
+    #     embedding=embeddings,
+    #     url=embeddings_store_url,
+    #     username=username,
+    #     password=password,
+    #     node_label="Study",
+    #     text_node_properties=["name"],
+    #     embedding_node_property="embedding",
+    # )
 
     kg_qa = RetrievalQAWithSourcesChain(  # TODO:Optimize
         combine_documents_chain=qa_chain,
         retriever=kg.as_retriever(search_kwargs={"k": 5}),
         reduce_k_below_max_tokens=False,
         max_tokens_limit=3375,
+        verbose=True,
     )
     return kg_qa

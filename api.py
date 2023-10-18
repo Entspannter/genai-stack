@@ -1,5 +1,5 @@
 import os
-
+import json
 from langchain.graphs import Neo4jGraph
 from dotenv import load_dotenv
 from utils import (
@@ -20,7 +20,6 @@ from queue import Queue, Empty
 from collections.abc import Generator
 from sse_starlette.sse import EventSourceResponse
 from fastapi.middleware.cors import CORSMiddleware
-import json
 
 load_dotenv(".env")
 
@@ -30,7 +29,6 @@ password = os.getenv("NEO4J_PASSWORD")
 ollama_base_url = os.getenv("OLLAMA_BASE_URL")
 embedding_model_name = os.getenv("EMBEDDING_MODEL")
 llm_name = os.getenv("LLM")
-# Remapping for Langchain Neo4j integration
 os.environ["NEO4J_URL"] = url
 
 embeddings, dimension = load_embedding_model(
@@ -39,7 +37,6 @@ embeddings, dimension = load_embedding_model(
     logger=BaseLogger(),
 )
 
-# if Neo4j is local, you can go to http://localhost:7474/ to browse the database
 neo4j_graph = Neo4jGraph(url=url, username=username, password=password)
 create_vector_index(neo4j_graph, dimension)
 
@@ -49,13 +46,15 @@ llm = load_llm(
 
 llm_chain = configure_llm_only_chain(llm)
 rag_chain = configure_qa_rag_chain(
-    llm, embeddings, embeddings_store_url=url, username=username, password=password
+    llm,
+    embeddings,
+    embeddings_store_url=url,
+    username=username,
+    password=password,
 )
 
 
 class QueueCallback(BaseCallbackHandler):
-    """Callback handler for streaming LLM responses to a queue."""
-
     def __init__(self, q):
         self.q = q
 
@@ -77,8 +76,6 @@ def stream(cb, q) -> Generator:
     t.start()
 
     content = ""
-
-    # Get each new token from the queue and yield for our generator
     while True:
         try:
             next_token = q.get(True, timeout=1)
@@ -101,6 +98,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+chat_memory = {}
+
 
 @app.get("/")
 async def root():
@@ -110,10 +109,14 @@ async def root():
 class Question(BaseModel):
     text: str
     rag: bool = False
+    session_id: str = None
 
 
 @app.get("/query-stream")
 def qstream(question: Question = Depends()):
+    session_id = question.session_id
+    chat_history = chat_memory.get(session_id, [])
+
     output_function = llm_chain
     if question.rag:
         output_function = rag_chain
@@ -122,7 +125,7 @@ def qstream(question: Question = Depends()):
 
     def cb():
         output_function(
-            {"question": question.text, "chat_history": []},
+            {"question": question.text, "chat_history": chat_history},
             callbacks=[QueueCallback(q)],
         )
 
@@ -136,11 +139,21 @@ def qstream(question: Question = Depends()):
 
 @app.get("/query")
 async def ask(question: Question = Depends()):
+    session_id = question.session_id
+    chat_history = chat_memory.get(session_id, [])
+    print("test1:", chat_memory)
+
     output_function = llm_chain
     if question.rag:
         output_function = rag_chain
+
     result = output_function(
-        {"question": question.text, "chat_history": []}, callbacks=[]
+        {"question": question.text, "chat_history": chat_history}, callbacks=[]
     )
+
+    chat_memory[session_id] = chat_history + [
+        {"user": question.text, "assistant": result["answer"]}
+    ]
+    # print("test2:"chat_memory)
 
     return json.dumps({"result": result["answer"], "model": llm_name})

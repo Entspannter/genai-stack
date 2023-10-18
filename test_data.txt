@@ -1,0 +1,19 @@
+This is a test adta file. The name of the ower is Linea Schmidt.
+
+Doesn't always look up documents in the retrieval system. Sometimes, this isn't needed! If the user is just saying "hi", you shouldn't have to look things up
+Can do multiple retrieval steps. In ConversationalRetrievalQA, one retrieval step is done ahead of time. If that retrieval step returns bad results, then you're out of luck! But with an agent you can try a different search query to see if that yields better results
+With this new type of memory, you can maybe avoid retrieval steps! This is because it remembers ai <-> tool interactions, and therefore remembers previous retrieval results. If a follow-up question the user asks can be answered by those, there's no need to do another retrieval step!
+Better support for meta-questions about the conversation - "how many questions have I asked?", etc. Because the old chain dereferences questions to be "standalone" and independent of the conversation history in order to query the vector store effectively, it struggles with this type of question.
+Note, that there are some downsides/dangers:
+
+With agents, they can occasionally spiral out of control. That's why we've added controls to our AgentExecutor to cap them at a certain max amount of steps. It's also worth noting that this is a VERY focused agent, in that it's only given one tool (and a pretty simple tool at that). In general, the fewer (and simpler) tools an agent is given, the more likely it is to be reliable.
+By remembering ai <-> tool interactions, that can hog the context window occasionally. That's why we've included a flag to disable that type of memory, and more generally have made memory pretty plug-and-play.
+
+Doesn't always look up documents in the retrieval system. Sometimes, this isn't needed! If the user is just saying "hi", you shouldn't have to look things up
+Can do multiple retrieval steps. In ConversationalRetrievalQA, one retrieval step is done ahead of time. If that retrieval step returns bad results, then you're out of luck! But with an agent you can try a different search query to see if that yields better results
+With this new type of memory, you can maybe avoid retrieval steps! This is because it remembers ai <-> tool interactions, and therefore remembers previous retrieval results. If a follow-up question the user asks can be answered by those, there's no need to do another retrieval step!
+Better support for meta-questions about the conversation - "how many questions have I asked?", etc. Because the old chain dereferences questions to be "standalone" and independent of the conversation history in order to query the vector store effectively, it struggles with this type of question.
+Note, that there are some downsides/dangers:
+
+With agents, they can occasionally spiral out of control. That's why we've added controls to our AgentExecutor to cap them at a certain max amount of steps. It's also worth noting that this is a VERY focused agent, in that it's only given one tool (and a pretty simple tool at that). In general, the fewer (and simpler) tools an agent is given, the more likely it is to be reliable.
+By remembering ai <-> tool interactions, that can hog the context window occasionally. That's why we've included a flag to disable that type of memory, and more generally have made memory pretty plug-and-play.
