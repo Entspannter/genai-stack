@@ -143,35 +143,51 @@ def configure_qa_rag_chain(
     # Vector + Knowledge Graph response
     kg = Neo4jVector.from_existing_index(
         embedding=embeddings,
-        url=embeddings_store_url,
-        username=username,
-        password=password,
-        database="neo4j",
-        index_name="study_data",
-        text_node_property="name",
+        url="bolt://localhost:7687",
+        username="neo4j",
+        password="password",
+        database="neo4j",  # neo4j by default
+        index_name="study_data",  # vector by default
+        text_node_property="body",  # text by default
         retrieval_query="""
-    WITH node AS study, score AS similarity
-    CALL {
-      WITH study
-      MATCH (study)-[:HAS_CRITERIA]->(criteria:Criteria)
-      RETURN {
-        studyText: '##Study Name: ' + study.name +
-                   '\nShort Name: ' + study.short_name +
-                   '\nStudy Identifier: ' + study.identifier +
-                   '\nStudy Centers: ' + study.study_centers +
-                   '\nIndication: ' + study.indication +
-                   '\nSub-Indication: ' + study.subindication +
-                   '\nCriteria: ' + criteria.value +
-                   '\nContact: ' + study.contact +
-                   '\nContact Email: ' + study.contact_email,
-        metadata: study.metadata
-      } AS studyData
-    }
-    RETURN studyData.studyText AS text, studyData.metadata AS metadata, similarity as score
-    ORDER BY similarity ASC // so that best answers are the last
+    MATCH (s:Study)
+WITH s, s.score AS similarity
+CALL {
+    WITH s
+    OPTIONAL MATCH (study)-[:HAS_INDICATION]->(ind:Indication)
+    OPTIONAL MATCH (study)-[:HAS_SUBINDICATION]->(sub:SubIndication)
+    OPTIONAL MATCH (study)-[relContact:HAS_CONTACT]->(con:Contact)
+    OPTIONAL MATCH (study)-[:CONDUCTED_AT]->(sc:StudyCenter)
+    OPTIONAL MATCH (study)-[:HAS_CRITERIA]->(criteria)
+    WITH study, ind, sub, 
+        COLLECT(DISTINCT con.name) AS ContactNames, 
+        COLLECT(DISTINCT relContact.email) AS ContactEmails,
+        COLLECT(DISTINCT sc.name) AS StudyCenterNames, 
+        COLLECT(DISTINCT criteria.value) AS CriteriaValues
+    RETURN 
+    '##Study Name: ' + study.name 
+    AS text
+} 
+WITH text, s, similarity
+RETURN text,
+       similarity as score,
+       {source: s.metadata} AS metadata
+ORDER BY similarity ASC
 
-            """,
+""",
     )
+    #       s.identifier AS StudyIdentifier,
+    #    COALESCE(ind.name, "N/A") AS Indication,
+    #    COALESCE(sub.name, "N/A") AS SubIndication,
+    # s.embedding AS embedding,
+
+    # '\nIdentifier: ' + study.identifier +
+    # COALESCE('\nIndication: ' + ind.name, '') +
+    # COALESCE('\nSub-Indication: ' + sub.name, '') +
+    # '\nContact Names: ' + reduce(str='', name IN ContactNames | str + name + '; ') +
+    # '\nContact Emails: ' + reduce(str='', email IN ContactEmails | str + email + '; ') +
+    # '\nStudy Center Names: ' + reduce(str='', name IN StudyCenterNames | str + name + '; ') +
+    # '\nCriteria Values: ' + reduce(str='', value IN CriteriaValues | str + value + '; ') AS text, ind, sub
 
     # kg = Neo4jVector.from_existing_graph(
     #     embedding=embeddings,
@@ -185,7 +201,7 @@ def configure_qa_rag_chain(
 
     kg_qa = RetrievalQAWithSourcesChain(  # TODO:Optimize
         combine_documents_chain=qa_chain,
-        retriever=kg.as_retriever(search_kwargs={"k": 5}),
+        retriever=kg.as_retriever(search_kwargs={"k": 1}),
         reduce_k_below_max_tokens=False,
         max_tokens_limit=3375,
         verbose=True,
