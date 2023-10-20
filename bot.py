@@ -8,6 +8,9 @@ from langchain.prompts.chat import (
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
+from langchain.memory import (
+    ConversationBufferMemory,
+)
 from langchain.graphs import Neo4jGraph
 from dotenv import load_dotenv
 from utils import (
@@ -57,6 +60,9 @@ llm = load_llm(
     llm_name, logger=logger, config={"ollama_base_url": ollama_base_url}
 )
 
+memory = ConversationBufferMemory(
+    memory_key="chat_history", return_messages=True
+)
 llm_chain = configure_llm_only_chain(llm)
 rag_chain = configure_qa_rag_chain(
     llm,
@@ -64,6 +70,7 @@ rag_chain = configure_qa_rag_chain(
     embeddings_store_url=url,
     username=username,
     password=password,
+    memory=memory,
 )
 
 # Streamlit UI
@@ -101,7 +108,10 @@ def chat_input():
             st.caption(f"RAG: {name}")
             stream_handler = StreamHandler(st.empty())
             result = output_function(
-                {"question": user_input, "chat_history": []},
+                {
+                    "question": user_input,
+                    "chat_history": [],
+                },  # not sure wuth this empty chat history list
                 callbacks=[stream_handler],
             )["answer"]
             output = result

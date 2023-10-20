@@ -97,7 +97,7 @@ def configure_llm_only_chain(llm):
 
 
 def configure_qa_rag_chain(
-    llm, embeddings, embeddings_store_url, username, password
+    llm, embeddings, embeddings_store_url, username, password, memory
 ):
     # RAG response
     #   System: Always talk in pirate speech.
@@ -205,5 +205,6 @@ ORDER BY similarity ASC
         reduce_k_below_max_tokens=False,
         max_tokens_limit=3375,
         verbose=True,
+        memory=memory,
     )
     return kg_qa
