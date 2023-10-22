@@ -61,8 +61,14 @@ llm = load_llm(
 )
 
 memory = ConversationBufferMemory(
-    memory_key="chat_history", return_messages=True
+    memory_key="chat_history",
+    input_key="question",
+    output_key="answer",
+    return_messages=True,
 )
+# memory = ConversationSummaryBufferMemory(
+#     llm=llm, input_key="question", output_key="answer"
+# )
 llm_chain = configure_llm_only_chain(llm)
 rag_chain = configure_qa_rag_chain(
     llm,
@@ -110,14 +116,14 @@ def chat_input():
             result = output_function(
                 {
                     "question": user_input,
-                    "chat_history": [],
+                    "chat_history": memory,
                 },  # not sure wuth this empty chat history list
                 callbacks=[stream_handler],
             )["answer"]
             output = result
             st.session_state[f"user_input"].append(user_input)
             st.session_state[f"generated"].append(output)
-            st.session_state[f"rag_mode"].append(name)
+            # st.session_state[f"rag_mode"].append(name)
 
 
 def display_chat():
@@ -133,13 +139,23 @@ def display_chat():
 
     if st.session_state[f"generated"]:
         size = len(st.session_state[f"generated"])
+
+        print(len(st.session_state[f"generated"]))
+        print(len(st.session_state[f"user_input"]))
+        print(len(st.session_state[f"rag_mode"]))
+
         # Display only the last three exchanges
         for i in range(max(size - 3, 0), size):
             with st.chat_message("user"):
                 st.write(st.session_state[f"user_input"][i])
 
             with st.chat_message("assistant"):
-                st.caption(f"RAG: {st.session_state[f'rag_mode'][i]}")
+                if i < len(
+                    st.session_state[f"rag_mode"]
+                ):  # Check to avoid IndexError
+                    st.caption(f"RAG: {st.session_state[f'rag_mode'][i]}")
+                else:
+                    st.caption("RAG: Unknown Mode")
                 st.write(st.session_state[f"generated"][i])
 
         with st.expander("Not finding what you're looking for?"):

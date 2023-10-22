@@ -20,6 +20,9 @@ from queue import Queue, Empty
 from collections.abc import Generator
 from sse_starlette.sse import EventSourceResponse
 from fastapi.middleware.cors import CORSMiddleware
+from langchain.memory import (
+    ConversationBufferMemory,
+)
 
 load_dotenv(".env")
 
@@ -44,6 +47,13 @@ llm = load_llm(
     llm_name, logger=BaseLogger(), config={"ollama_base_url": ollama_base_url}
 )
 
+memory = ConversationBufferMemory(
+    memory_key="chat_history",
+    input_key="question",
+    output_key="answer",
+    return_messages=True,
+)
+
 llm_chain = configure_llm_only_chain(llm)
 rag_chain = configure_qa_rag_chain(
     llm,
@@ -51,6 +61,7 @@ rag_chain = configure_qa_rag_chain(
     embeddings_store_url=url,
     username=username,
     password=password,
+    memory=memory,
 )
 
 
