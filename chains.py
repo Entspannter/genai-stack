@@ -101,6 +101,7 @@ def configure_qa_rag_chain(
 ):
     # RAG response
     #   System: Always talk in pirate speech.
+
     # general_system_template = """
     # You are an attentive and thorough AI assistant, supporting healthcare professionals by identifying the most relevant clinical studies for their patients.
     # Use the following pieces of context to answer the question at the end.
@@ -121,13 +122,18 @@ def configure_qa_rag_chain(
     # Generate concise answers with references sources section of links to
     # relevant clinical trial information only at the end of the answer. Always answer in the language you were queried.
     # """
-    general_system_template = """You are a helpful AI agent that names all potential studies for a patient. In the following you get a summary of all studies that suite your patient. Please name them:
+    general_system_template = """You are a helpful AI agent that names all potential studies for a patient.
+    In the following you get a summary of all studies that suite your patient. Name them and try to match them to the patient. Ask for mor information as needed.
+    If you don't know the answer, just say that you don't know, you must not make up an answer. Answer in the language you were queried.
+    Study summaries that might be suitable:
     ----
     {summaries}
     ----
     """
 
-    general_user_template = "Patient description:```{question}```"
+    general_user_template = (
+        "Patient description from the professional:```{question}```"
+    )
     messages = [
         SystemMessagePromptTemplate.from_template(general_system_template),
         HumanMessagePromptTemplate.from_template(general_user_template),
@@ -150,22 +156,24 @@ def configure_qa_rag_chain(
         index_name="study_data",  # vector by default
         text_node_property="body",  # text by default
         retrieval_query="""
-    MATCH (s:Study)
+MATCH (s:Study)
 WITH s, s.score AS similarity
 CALL {
     WITH s
-    OPTIONAL MATCH (study)-[:HAS_INDICATION]->(ind:Indication)
-    OPTIONAL MATCH (study)-[:HAS_SUBINDICATION]->(sub:SubIndication)
-    OPTIONAL MATCH (study)-[relContact:HAS_CONTACT]->(con:Contact)
-    OPTIONAL MATCH (study)-[:CONDUCTED_AT]->(sc:StudyCenter)
-    OPTIONAL MATCH (study)-[:HAS_CRITERIA]->(criteria)
-    WITH study, ind, sub, 
+    OPTIONAL MATCH (s)-[:HAS_INDICATION]->(ind:Indication)
+    OPTIONAL MATCH (s)-[:HAS_SUBINDICATION]->(sub:SubIndication)
+    OPTIONAL MATCH (s)-[relContact:HAS_CONTACT]->(con:Contact)
+    OPTIONAL MATCH (s)-[:CONDUCTED_AT]->(sc:StudyCenter)
+    OPTIONAL MATCH (s)-[:HAS_CRITERIA]->(criteria:Criteria)
+    WITH s, ind, sub, 
         COLLECT(DISTINCT con.name) AS ContactNames, 
         COLLECT(DISTINCT relContact.email) AS ContactEmails,
         COLLECT(DISTINCT sc.name) AS StudyCenterNames, 
-        COLLECT(DISTINCT criteria.value) AS CriteriaValues
+        COLLECT(DISTINCT criteria.description) AS CriteriaValues
     RETURN 
-    '##Study Name: ' + study.name 
+    '##Study Name: ' + s.name + 
+    '##Criteria: ' + REDUCE(cr = '', val IN CriteriaValues | cr + val + '; ') +
+    '##Conducted at: ' + REDUCE(sc = '', name IN StudyCenterNames | sc + name + '; ')
     AS text
 } 
 WITH text, s, similarity
@@ -173,6 +181,8 @@ RETURN text,
        similarity as score,
        {source: s.metadata} AS metadata
 ORDER BY similarity ASC
+
+
 
 """,
     )
@@ -201,8 +211,8 @@ ORDER BY similarity ASC
 
     kg_qa = RetrievalQAWithSourcesChain(  # TODO:Optimize
         combine_documents_chain=qa_chain,
-        retriever=kg.as_retriever(search_kwargs={"k": 1}),
-        reduce_k_below_max_tokens=False,
+        retriever=kg.as_retriever(search_kwargs={"k": 3}),
+        reduce_k_below_max_tokens=True,
         max_tokens_limit=3375,
         verbose=True,
         memory=memory,
