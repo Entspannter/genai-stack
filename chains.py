@@ -122,14 +122,22 @@ def configure_qa_rag_chain(
     # Generate concise answers with references sources section of links to
     # relevant clinical trial information only at the end of the answer. Always answer in the language you were queried.
     # """
-    general_system_template = """You are a helpful AI agent that names all potential studies for a patient.
-    In the following you get a summary of all studies that suite your patient. Name them and try to match them to the patient. Ask for mor information as needed.
-    If you don't know the answer, just say that you don't know, you must not make up an answer. Answer in the language you were queried.
-    Study summaries that might be suitable:
-    ----
-    {summaries}
-    ----
-    """
+    # general_system_template = """You are a helpful AI agent that names all potential studies for a patient.
+    # In the following you get a summary of all studies that suite your patient. Name them and try to match them to the patient. Ask for mor information as needed.
+    # If you don't know the answer, just say that you don't know, you must not make up an answer. Answer in the language you were queried.
+    # Study summaries that might be suitable:
+    # ----
+    # {summaries}
+    # ----
+    # """
+
+    general_system_template = """You are an AI designed to assist healthcare professionals by meticulously matching patients to clinical studies using their specific details. To make the best recommendations, initiate a dialogue to extract precise information about the patient, such as their medical history or specific markers.
+{chat_history} (previous interactions in this conversation)
+{summaries} (synopses of potential clinical studies and their criteria)
+Evaluate studies based on the patient's profile, and suggest the top one or two.
+If uncertain or needing more context, ask further questions. Highlight only those studies that align closely with the patient's condition.
+Ensure you provide details of where each recommended study is conducted and the contact person's information.
+Always mirror the doctor's professional tone and respond in the same language as queried. If no studies are suitable, clearly indicate so."""
 
     general_user_template = (
         "Patient description from the professional:```{question}```"
@@ -208,13 +216,24 @@ ORDER BY similarity ASC
     #     text_node_properties=["name"],
     #     embedding_node_property="embedding",
     # )
-
-    kg_qa = RetrievalQAWithSourcesChain(  # TODO:Optimize
-        combine_documents_chain=qa_chain,
+    memory = ConversationBufferMemory(
+        memory_key="chat_history", return_messages=True
+    )
+    kg_qa = ConversationalRetrievalChain.from_llm(
+        llm,
+        # combine_documents_chain=qa_chain,
         retriever=kg.as_retriever(search_kwargs={"k": 3}),
-        reduce_k_below_max_tokens=True,
-        max_tokens_limit=3375,
-        verbose=True,
+        # reduce_k_below_max_tokens=True,
+        max_tokens_limit=3900,
         memory=memory,
     )
+
+    # kg_qa = RetrievalQAWithSourcesChain(  # TODO:Optimize
+    #     combine_documents_chain=qa_chain,
+    #     retriever=kg.as_retriever(search_kwargs={"k": 3}),
+    #     reduce_k_below_max_tokens=True,
+    #     max_tokens_limit=3375,
+    #     verbose=True,
+    #     memory=memory,
+    # )
     return kg_qa

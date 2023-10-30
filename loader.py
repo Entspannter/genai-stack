@@ -39,10 +39,13 @@ def add_embeddings_to_study(study_dict: dict) -> dict:
     Add embeddings to the study dictionary by considering all its fields.
     """
     # Concatenate all the values in the study_dict to form a single string
-    study_text = "\n".join([str(val) for val in study_dict.values()])
+    study_text = " \n ".join(
+        [f"{key}: {str(val)}" for key, val in study_dict.items()]
+    )
 
     # Add embeddings
     study_dict["embedding"] = embeddings.embed_query(study_text)
+    study_dict["description"] = study_text
 
     return study_dict
 
@@ -114,7 +117,7 @@ def load_csv_data(filename: str) -> None:
 def insert_csv_data(data: list) -> None:
     import_query = """
     UNWIND $data AS study
-    MERGE (s:Study {name: study.name, short_name: study.short_name, embedding: study.embedding, metadata: study.metadata})
+    MERGE (s:Study {name: study.name, short_name: study.short_name, description: study.description, embedding: study.embedding, metadata: study.metadata})
     ON CREATE SET s.identifier = study.identifier
 
     WITH study, s
@@ -147,7 +150,7 @@ def insert_csv_data(data: list) -> None:
 
 
 def render_page():
-    st.header("Study Loader 4")
+    st.header("Study Loader")
     st.subheader("Upload study data to load into Neo4j")
     st.caption("Go to http://localhost:7474/ to explore the graph.")
 
