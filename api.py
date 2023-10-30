@@ -48,10 +48,7 @@ llm = load_llm(
 )
 
 memory = ConversationBufferMemory(
-    memory_key="chat_history",
-    input_key="question",
-    output_key="answer",
-    return_messages=True,
+    memory_key="chat_history", return_messages=True
 )
 
 llm_chain = configure_llm_only_chain(llm)

@@ -60,24 +60,29 @@ llm = load_llm(
     llm_name, logger=logger, config={"ollama_base_url": ollama_base_url}
 )
 
-memory = ConversationBufferMemory(
-    memory_key="chat_history",
-    input_key="question",
-    output_key="answer",
-    return_messages=True,
-)
+if "memory" not in st.session_state:
+    st.session_state.memory = ConversationBufferMemory(
+        memory_key="chat_history", return_messages=True
+    )
 # memory = ConversationSummaryBufferMemory(
 #     llm=llm, input_key="question", output_key="answer"
 # )
+memory = st.session_state.memory
 llm_chain = configure_llm_only_chain(llm)
-rag_chain = configure_qa_rag_chain(
-    llm,
-    embeddings,
-    embeddings_store_url=url,
-    username=username,
-    password=password,
-    memory=memory,
-)
+
+if "rag_chain" not in st.session_state:
+    st.session_state.rag_chain = configure_qa_rag_chain(
+        llm,
+        embeddings,
+        embeddings_store_url=url,
+        username=username,
+        password=password,
+        memory=memory,
+    )
+
+
+rag_chain = st.session_state.rag_chain
+
 
 # Streamlit UI
 styl = f"""
@@ -116,7 +121,7 @@ def chat_input():
             result = output_function(
                 {
                     "question": user_input,
-                    "chat_history": memory,
+                    "chat_history": memory.dict()["chat_memory"]["messages"],
                 },  # not sure wuth this empty chat history list
                 callbacks=[stream_handler],
             )["answer"]
@@ -139,10 +144,6 @@ def display_chat():
 
     if st.session_state[f"generated"]:
         size = len(st.session_state[f"generated"])
-
-        print(len(st.session_state[f"generated"]))
-        print(len(st.session_state[f"user_input"]))
-        print(len(st.session_state[f"rag_mode"]))
 
         # Display only the last three exchanges
         for i in range(max(size - 3, 0), size):

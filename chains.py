@@ -5,17 +5,23 @@ from langchain.embeddings import (
 )
 from langchain.chat_models import ChatOpenAI, ChatOllama
 from langchain.vectorstores.neo4j_vector import Neo4jVector
-from langchain.chains import RetrievalQAWithSourcesChain
+from langchain.chains import ConversationalRetrievalChain
 from langchain.chains.qa_with_sources import load_qa_with_sources_chain
 from langchain.memory import (
+    ConversationSummaryBufferMemory,
     ConversationBufferMemory,
 )  # TODO: Switch the RAG / Langchain Pipline to these models!
 from langchain.chains import ConversationalRetrievalChain
+from langchain.prompts.prompt import PromptTemplate
+from langchain.chains import LLMChain
+from langchain.chains.question_answering import load_qa_chain
+from langchain.chat_models import ChatOpenAI
 from langchain.prompts.chat import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
+import streamlit as st
 from typing import List, Any
 from utils import BaseLogger
 
@@ -72,8 +78,8 @@ def load_llm(llm_name: str, logger=BaseLogger(), config={}):
 def configure_llm_only_chain(llm):
     # LLM only response
     template = """
-    You are a helpful assistant that helps a clinical expert with matching a patient to a clinical trial.
-    If you don't know the answer, just say that you don't know, you must not make up an answer. Answer in the language you were queried.
+    You are a helpful assistant that helps a support agent with answering programming questions.
+    If you don't know the answer, just say that you don't know, you must not make up an answer.
     """
     system_message_prompt = SystemMessagePromptTemplate.from_template(template)
     human_template = "{question}"
@@ -89,7 +95,7 @@ def configure_llm_only_chain(llm):
     ) -> str:
         chain = prompt | llm
         answer = chain.invoke(
-            user_input, config={"callbacks": callbacks}
+            {"question": user_input}, config={"callbacks": callbacks}
         ).content
         return {"answer": answer}
 
@@ -99,141 +105,64 @@ def configure_llm_only_chain(llm):
 def configure_qa_rag_chain(
     llm, embeddings, embeddings_store_url, username, password, memory
 ):
-    # RAG response
-    #   System: Always talk in pirate speech.
+    custom_template = """You are a bot trying to match patients to studies. Given the following conversation and a follow up information, rephrase the information or question to be a standalone question. At the end of standalone question add this reminder to answer in the language you were queried in. If you do not know the answer probe for additional information.
+    Chat History:
+    {chat_history}
+    Follow Up Input: {question}
+    Standalone question:"""
 
-    # general_system_template = """
-    # You are an attentive and thorough AI assistant, supporting healthcare professionals by identifying the most relevant clinical studies for their patients.
-    # Use the following pieces of context to answer the question at the end.
-    # A doctor will enter information about a patient and their condition, and you will need to find the most relevant clinical studies for that patient.
-    # The context contains several potential studies for that patient.
-    # When you find particular study in the context useful, make sure to cite it in the answer using the link and study identifier.
-    # If you don't know the answer, just say that you don't know, don't try to make up an answer.
-    # ----
-    # {summaries}
-    # ----
-    # Your mission is not to summarize, but to critically analyze each study based on the patient's condition and requirements.
-    # Initiate the dialogue by seeking pertinent details such as histopathological markers, medical history, or other specifics, which are instrumental for your decision-making.
-    # Refrain from recommending a study until you have gathered sufficient information to ascertain its suitability. If information is lacking, continue to probe for relevant data.
-    # Your goal is to single out one or two studies that best match the patient's needs, achieved through insightful questioning.
-    # If no study is appropriate, clearly communicate this.
-    # Maintain a strict focus on the patient's information as shared by the professional, and do not consider studies pertaining to unrelated conditions.
-    # Under no circumstances show information for studies that do not suit the patient. Respond professionally, matching the language used in the doctor's information.
-    # Generate concise answers with references sources section of links to
-    # relevant clinical trial information only at the end of the answer. Always answer in the language you were queried.
-    # """
-    # general_system_template = """You are a helpful AI agent that names all potential studies for a patient.
-    # In the following you get a summary of all studies that suite your patient. Name them and try to match them to the patient. Ask for mor information as needed.
-    # If you don't know the answer, just say that you don't know, you must not make up an answer. Answer in the language you were queried.
-    # Study summaries that might be suitable:
-    # ----
-    # {summaries}
-    # ----
-    # """
+    CUSTOM_QUESTION_PROMPT = PromptTemplate.from_template(custom_template)
 
-    general_system_template = """You are an AI designed to assist healthcare professionals by meticulously matching patients to clinical studies using their specific details. To make the best recommendations, initiate a dialogue to extract precise information about the patient, such as their medical history or specific markers.
-{chat_history} (previous interactions in this conversation)
-{summaries} (synopses of potential clinical studies and their criteria)
-Evaluate studies based on the patient's profile, and suggest the top one or two.
-If uncertain or needing more context, ask further questions. Highlight only those studies that align closely with the patient's condition.
-Ensure you provide details of where each recommended study is conducted and the contact person's information.
-Always mirror the doctor's professional tone and respond in the same language as queried. If no studies are suitable, clearly indicate so."""
+    custom_qa_prompt = """
+        You are an attentive and thorough AI chat assistant, supporting healthcare professionals by identifying the most relevant clinical studies for their patients.
+        A doctor will enter information about a patient and you will be presented with a set of studies that might be suitable. Engage in a conversation to find the most suitable studies.
+        Ask questions about the patient to identify the optimal study. Do not reveal names of studies unless you are certain they are a match. Do not mention studies that might not be a match.
+        Your mission is not to summarize, but to critically analyze each study based on the patient's condition and requirements.
+        Initiate the dialogue by seeking pertinent details such as histopathological markers, medical history, or other specifics, which are instrumental for your decision-making. Take into account where the patient lives.
+        Refrain from recommending a study until you have gathered sufficient information to ascertain its suitability. If information is lacking, continue to probe for relevant data.
+        If no study is appropriate, clearly communicate this. If one or two studies are suitable, provide the contact details (especially the mail adress).
+        Maintain a strict focus on the patient's information as shared by the professional, and do not consider studies pertaining to unrelated conditions.
+        Respond professionally, matching the language used in the doctor's information.
+        Always answer in the language you were queried. Do not make up answers.
+        This is the conversation with information about potentially matching studies: {context}. This is the new rephreased information or question: {question}.
+        Now, assistant, it is your job to match the patient. Keep your answers concise with the most relevant information.
+        Helpful Answer in the original language:"""
 
-    general_user_template = (
-        "Patient description from the professional:```{question}```"
-    )
-    messages = [
-        SystemMessagePromptTemplate.from_template(general_system_template),
-        HumanMessagePromptTemplate.from_template(general_user_template),
-    ]
-    qa_prompt = ChatPromptTemplate.from_messages(messages)
-
-    qa_chain = load_qa_with_sources_chain(
-        llm,
-        chain_type="stuff",
-        prompt=qa_prompt,
-    )
+    CUSTOM_QA_PROMPT = PromptTemplate.from_template(custom_qa_prompt)
 
     # Vector + Knowledge Graph response
-    kg = Neo4jVector.from_existing_index(
-        embedding=embeddings,
-        url="bolt://localhost:7687",
-        username="neo4j",
-        password="password",
+    kg = Neo4jVector.from_existing_graph(
+        embedding=OpenAIEmbeddings(),
+        url=embeddings_store_url,
+        username=username,
+        password=password,
         database="neo4j",  # neo4j by default
-        index_name="study_data",  # vector by default
-        text_node_property="body",  # text by default
-        retrieval_query="""
-MATCH (s:Study)
-WITH s, s.score AS similarity
-CALL {
-    WITH s
-    OPTIONAL MATCH (s)-[:HAS_INDICATION]->(ind:Indication)
-    OPTIONAL MATCH (s)-[:HAS_SUBINDICATION]->(sub:SubIndication)
-    OPTIONAL MATCH (s)-[relContact:HAS_CONTACT]->(con:Contact)
-    OPTIONAL MATCH (s)-[:CONDUCTED_AT]->(sc:StudyCenter)
-    OPTIONAL MATCH (s)-[:HAS_CRITERIA]->(criteria:Criteria)
-    WITH s, ind, sub, 
-        COLLECT(DISTINCT con.name) AS ContactNames, 
-        COLLECT(DISTINCT relContact.email) AS ContactEmails,
-        COLLECT(DISTINCT sc.name) AS StudyCenterNames, 
-        COLLECT(DISTINCT criteria.description) AS CriteriaValues
-    RETURN 
-    '##Study Name: ' + s.name + 
-    '##Criteria: ' + REDUCE(cr = '', val IN CriteriaValues | cr + val + '; ') +
-    '##Conducted at: ' + REDUCE(sc = '', name IN StudyCenterNames | sc + name + '; ')
-    AS text
-} 
-WITH text, s, similarity
-RETURN text,
-       similarity as score,
-       {source: s.metadata} AS metadata
-ORDER BY similarity ASC
-
-
-
-""",
+        index_name="study_data2",  # vector by default
+        node_label="Study",
+        text_node_properties=["name", "description"],
+        embedding_node_property="embedding",
     )
-    #       s.identifier AS StudyIdentifier,
-    #    COALESCE(ind.name, "N/A") AS Indication,
-    #    COALESCE(sub.name, "N/A") AS SubIndication,
-    # s.embedding AS embedding,
 
-    # '\nIdentifier: ' + study.identifier +
-    # COALESCE('\nIndication: ' + ind.name, '') +
-    # COALESCE('\nSub-Indication: ' + sub.name, '') +
-    # '\nContact Names: ' + reduce(str='', name IN ContactNames | str + name + '; ') +
-    # '\nContact Emails: ' + reduce(str='', email IN ContactEmails | str + email + '; ') +
-    # '\nStudy Center Names: ' + reduce(str='', name IN StudyCenterNames | str + name + '; ') +
-    # '\nCriteria Values: ' + reduce(str='', value IN CriteriaValues | str + value + '; ') AS text, ind, sub
-
-    # kg = Neo4jVector.from_existing_graph(
-    #     embedding=embeddings,
-    #     url=embeddings_store_url,
-    #     username=username,
-    #     password=password,
-    #     node_label="Study",
-    #     text_node_properties=["name"],
-    #     embedding_node_property="embedding",
-    # )
-    memory = ConversationBufferMemory(
-        memory_key="chat_history", return_messages=True
+    summary_llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
+    # memory = ConversationBufferMemory(
+    #     memory_key="chat_history", return_messages=True
+    # )  # evtl. fill in inout and output keys
+    retriever = kg.as_retriever(search_kwargs={"k": 3})
+    question_generator = LLMChain(
+        llm=summary_llm, prompt=CUSTOM_QUESTION_PROMPT, verbose=True
     )
-    kg_qa = ConversationalRetrievalChain.from_llm(
-        llm,
-        # combine_documents_chain=qa_chain,
-        retriever=kg.as_retriever(search_kwargs={"k": 3}),
-        # reduce_k_below_max_tokens=True,
-        max_tokens_limit=3900,
+    doc_chain = load_qa_chain(
+        llm, chain_type="stuff", prompt=CUSTOM_QA_PROMPT, verbose=True
+    )
+
+    kg_qa = ConversationalRetrievalChain(
+        retriever=retriever,
         memory=memory,
+        combine_docs_chain=doc_chain,
+        question_generator=question_generator,
+        # return_source_documents=True,
+        # return_generated_question=True,
+        verbose=True,
     )
 
-    # kg_qa = RetrievalQAWithSourcesChain(  # TODO:Optimize
-    #     combine_documents_chain=qa_chain,
-    #     retriever=kg.as_retriever(search_kwargs={"k": 3}),
-    #     reduce_k_below_max_tokens=True,
-    #     max_tokens_limit=3375,
-    #     verbose=True,
-    #     memory=memory,
-    # )
     return kg_qa
