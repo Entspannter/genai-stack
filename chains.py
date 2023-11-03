@@ -24,7 +24,13 @@ from langchain.prompts.chat import (
 import streamlit as st
 from typing import List, Any
 from utils import BaseLogger
-
+from langchain.agents.agent_toolkits import create_retriever_tool
+from langchain.prompts import MessagesPlaceholder
+from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain.schema.messages import SystemMessage
+from langchain.agents.openai_functions_agent.base import OpenAIFunctionsAgent
+from langchain.agents import AgentExecutor
+from langchain.agents import AgentExecutor
 
 def load_embedding_model(
     embedding_model_name: str, logger=BaseLogger(), config={}
@@ -105,16 +111,35 @@ def configure_llm_only_chain(llm):
 def configure_qa_rag_chain(
     llm, embeddings, embeddings_store_url, username, password, memory
 ):
-    custom_template = """You are a bot trying to match patients to studies. Given the following conversation and a follow up information, rephrase the information or question to be a standalone question. At the end of standalone question add this reminder to answer in the language you were queried in. If you do not know the answer probe for additional information.
-    Chat History:
-    {chat_history}
-    Follow Up Input: {question}
-    Standalone question:"""
+    url = "bolt://localhost:7687"
+    username = "neo4j"
+    password = "password"
 
-    CUSTOM_QUESTION_PROMPT = PromptTemplate.from_template(custom_template)
+    kg = Neo4jVector.from_existing_graph(
+            embedding=OpenAIEmbeddings(),
+            url=url,
+            username=username,
+            password=password,
+            database="neo4j",  # neo4j by default
+            index_name="study_data2",  # vector by default
+            node_label="Study",
+            text_node_properties=["name", "description"],
+            embedding_node_property="embedding",
+    )
 
-    custom_qa_prompt = """
-        You are an attentive and thorough AI chat assistant, supporting healthcare professionals by identifying the most relevant clinical studies for their patients.
+    retriever = kg.as_retriever(search_kwargs={"k": 3})
+
+    tool = create_retriever_tool(
+    retriever,
+    "search_clinical_study",
+    "Searches and returns clinical studies based on a patient description (this should be as detailed as possible). The tool returns the top 3 most relevant studies. At least 3 information about the patient are required to match a study.",
+)
+
+    tools = [tool]
+
+    system_message = SystemMessage(
+    content=(
+        """You are an attentive and thorough AI chat assistant, supporting healthcare professionals by identifying the most relevant clinical studies for their patients.
         A doctor will enter information about a patient and you will be presented with a set of studies that might be suitable. Engage in a conversation to find the most suitable studies.
         Ask questions about the patient to identify the optimal study. Do not reveal names of studies unless you are certain they are a match. Do not mention studies that might not be a match.
         Your mission is not to summarize, but to critically analyze each study based on the patient's condition and requirements.
@@ -123,46 +148,88 @@ def configure_qa_rag_chain(
         If no study is appropriate, clearly communicate this. If one or two studies are suitable, provide the contact details (especially the mail adress).
         Maintain a strict focus on the patient's information as shared by the professional, and do not consider studies pertaining to unrelated conditions.
         Respond professionally, matching the language used in the doctor's information.
-        Always answer in the language you were queried. Do not make up answers.
-        This is the conversation with information about potentially matching studies: {context}. This is the new rephreased information or question: {question}.
-        Now, assistant, it is your job to match the patient. Keep your answers concise with the most relevant information.
-        Helpful Answer in the original language:"""
-
-    CUSTOM_QA_PROMPT = PromptTemplate.from_template(custom_qa_prompt)
-
-    # Vector + Knowledge Graph response
-    kg = Neo4jVector.from_existing_graph(
-        embedding=OpenAIEmbeddings(),
-        url=embeddings_store_url,
-        username=username,
-        password=password,
-        database="neo4j",  # neo4j by default
-        index_name="study_data2",  # vector by default
-        node_label="Study",
-        text_node_properties=["name", "description"],
-        embedding_node_property="embedding",
+        Always answer in the language you were queried. Do not make up answers. Keep your answers concise with the most relevant information.
+        Answer in the original language."""
     )
+)
 
-    summary_llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
-    # memory = ConversationBufferMemory(
-    #     memory_key="chat_history", return_messages=True
-    # )  # evtl. fill in inout and output keys
-    retriever = kg.as_retriever(search_kwargs={"k": 3})
-    question_generator = LLMChain(
-        llm=summary_llm, prompt=CUSTOM_QUESTION_PROMPT, verbose=True
-    )
-    doc_chain = load_qa_chain(
-        llm, chain_type="stuff", prompt=CUSTOM_QA_PROMPT, verbose=True
-    )
+    MEMORY_KEY = "chat_history"
 
-    kg_qa = ConversationalRetrievalChain(
-        retriever=retriever,
+    prompt = OpenAIFunctionsAgent.create_prompt(
+        system_message=system_message,
+        extra_prompt_messages=[MessagesPlaceholder(variable_name=MEMORY_KEY)],
+    )
+    agent = OpenAIFunctionsAgent(llm=llm, tools=tools, prompt=prompt)
+
+
+    agent_executor = AgentExecutor(
+        agent=agent,
+        tools=tools,
         memory=memory,
-        combine_docs_chain=doc_chain,
-        question_generator=question_generator,
-        # return_source_documents=True,
-        # return_generated_question=True,
-        verbose=True,
+        #verbose=True,
+        return_intermediate_steps=True,
     )
 
-    return kg_qa
+    return agent_executor
+
+    # custom_template = """You are a bot trying to match patients to studies. Given the following conversation and a follow up information, rephrase the information or question to be a standalone question. At the end of standalone question add this reminder to answer in the language you were queried in. If you do not know the answer probe for additional information.
+    # Chat History:
+    # {chat_history}
+    # Follow Up Input: {question}
+    # Standalone question:"""
+
+    # CUSTOM_QUESTION_PROMPT = PromptTemplate.from_template(custom_template)
+
+    # custom_qa_prompt = """
+    #     You are an attentive and thorough AI chat assistant, supporting healthcare professionals by identifying the most relevant clinical studies for their patients.
+    #     A doctor will enter information about a patient and you will be presented with a set of studies that might be suitable. Engage in a conversation to find the most suitable studies.
+    #     Ask questions about the patient to identify the optimal study. Do not reveal names of studies unless you are certain they are a match. Do not mention studies that might not be a match.
+    #     Your mission is not to summarize, but to critically analyze each study based on the patient's condition and requirements.
+    #     Initiate the dialogue by seeking pertinent details such as histopathological markers, medical history, or other specifics, which are instrumental for your decision-making. Take into account where the patient lives.
+    #     Refrain from recommending a study until you have gathered sufficient information to ascertain its suitability. If information is lacking, continue to probe for relevant data.
+    #     If no study is appropriate, clearly communicate this. If one or two studies are suitable, provide the contact details (especially the mail adress).
+    #     Maintain a strict focus on the patient's information as shared by the professional, and do not consider studies pertaining to unrelated conditions.
+    #     Respond professionally, matching the language used in the doctor's information.
+    #     Always answer in the language you were queried. Do not make up answers.
+    #     This is the conversation with information about potentially matching studies: {context}. This is the new rephreased information or question: {question}.
+    #     Now, assistant, it is your job to match the patient. Keep your answers concise with the most relevant information.
+    #     Helpful Answer in the original language:"""
+
+    # CUSTOM_QA_PROMPT = PromptTemplate.from_template(custom_qa_prompt)
+
+    # # Vector + Knowledge Graph response
+    # kg = Neo4jVector.from_existing_graph(
+    #     embedding=OpenAIEmbeddings(),
+    #     url=embeddings_store_url,
+    #     username=username,
+    #     password=password,
+    #     database="neo4j",  # neo4j by default
+    #     index_name="study_data2",  # vector by default
+    #     node_label="Study",
+    #     text_node_properties=["name", "description"],
+    #     embedding_node_property="embedding",
+    # )
+
+    # summary_llm = ChatOpenAI(temperature=0, model="gpt-3.5-turbo")
+    # # memory = ConversationBufferMemory(
+    # #     memory_key="chat_history", return_messages=True
+    # # )  # evtl. fill in inout and output keys
+    # retriever = kg.as_retriever(search_kwargs={"k": 3})
+    # question_generator = LLMChain(
+    #     llm=summary_llm, prompt=CUSTOM_QUESTION_PROMPT, verbose=True
+    # )
+    # doc_chain = load_qa_chain(
+    #     llm, chain_type="stuff", prompt=CUSTOM_QA_PROMPT, verbose=True
+    # )
+
+    # kg_qa = ConversationalRetrievalChain(
+    #     retriever=retriever,
+    #     memory=memory,
+    #     combine_docs_chain=doc_chain,
+    #     question_generator=question_generator,
+    #     # return_source_documents=True,
+    #     # return_generated_question=True,
+    #     verbose=True,
+    # )
+
+    # return kg_qa

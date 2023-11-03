@@ -11,6 +11,9 @@ from langchain.prompts.chat import (
 from langchain.memory import (
     ConversationBufferMemory,
 )
+from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
+    AgentTokenBufferMemory,
+)
 from langchain.graphs import Neo4jGraph
 from dotenv import load_dotenv
 from utils import (
@@ -61,14 +64,17 @@ llm = load_llm(
 )
 
 if "memory" not in st.session_state:
-    st.session_state.memory = ConversationBufferMemory(
-        memory_key="chat_history", return_messages=True
-    )
+    MEMORY_KEY = "chat_history"
+    st.session_state.memory = memory = AgentTokenBufferMemory(memory_key=MEMORY_KEY, llm=llm)
+    # st.session_state.memory = ConversationBufferMemory(
+    #     memory_key="chat_history", return_messages=True
+    # )
 # memory = ConversationSummaryBufferMemory(
 #     llm=llm, input_key="question", output_key="answer"
 # )
 memory = st.session_state.memory
 llm_chain = configure_llm_only_chain(llm)
+
 
 if "rag_chain" not in st.session_state:
     st.session_state.rag_chain = configure_qa_rag_chain(
@@ -82,6 +88,7 @@ if "rag_chain" not in st.session_state:
 
 
 rag_chain = st.session_state.rag_chain
+#st.text(f"Chat history:{memory.dict()['chat_memory']['messages']}")
 
 
 # Streamlit UI
@@ -120,15 +127,16 @@ def chat_input():
             stream_handler = StreamHandler(st.empty())
             result = output_function(
                 {
-                    "question": user_input,
-                    "chat_history": memory.dict()["chat_memory"]["messages"],
+                    "input": user_input,
+                    # "chat_history": memory.dict()["chat_memory"]["messages"],
                 },  # not sure wuth this empty chat history list
                 callbacks=[stream_handler],
-            )["answer"]
+            )["output"]
             output = result
             st.session_state[f"user_input"].append(user_input)
             st.session_state[f"generated"].append(output)
             # st.session_state[f"rag_mode"].append(name)
+            # print the chat history
 
 
 def display_chat():
