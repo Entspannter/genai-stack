@@ -1,50 +1,112 @@
 <script>
     import { tick } from "svelte";
     import SvelteMarkdown from "svelte-markdown";
-    import botImage from "./assets/images/bot.jpeg";
-    import meImage from "./assets/images/me.jpeg";
+    import botImage from "./assets/images/bot.png"; //update
+    import meImage from "./assets/images/questionmark.png"; //update to user_avatar in the future
     import MdLink from "./lib/MdLink.svelte";
+
 
     let messages = [];
     let ragMode = true;
-    let question = "How can I create a chatbot on top of my local PDF files using langchain?";
+    let question = "34-Jährige MS Patientin mit RRMS seit 3 Jahren, aktuell Neueinstellung mit Cladribin";
     let shouldAutoScroll = true;
     let input;
     let appState = "idle"; // or receiving
     let senderImages = { bot: botImage, me: meImage };
+    let sessionId = '';
+    let streamEndedNormally = false;
 
-    async function send() {
-        if (!question.trim().length) {
-            return;
+
+    async function fetchSessionId() {
+    try {
+        const response = await fetch('http://localhost:8504/manage-session', { credentials: 'include' });
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
-        appState = "receiving";
-        addMessage("me", question, ragMode);
-        const messageId = addMessage("bot", "", ragMode);
-        try {
-            const evt = new EventSource(
-                `http://localhost:8504/query-stream?text=${encodeURI(question)}&rag=${ragMode}`
-            );
-            question = "";
-            evt.onmessage = (e) => {
-                if (e.data) {
-                    const data = JSON.parse(e.data);
-                    if (data.init) {
-                        updateMessage(messageId, "", data.model);
-                        return;
-                    }
-                    updateMessage(messageId, data.token);
+        const data = await response.json();
+        sessionId = data.session_id;
+    } catch (error) {
+        console.error("Failed to fetch session ID:", error);
+    }
+} 
+
+async function resetSession() {
+    try {
+        const response = await fetch('http://localhost:8504/reset-session', {
+            method: 'POST',
+            credentials: 'include', // Important for including cookies
+        });
+        if (response.ok) {
+            console.log('Session reset successfully');
+            sessionId = ''; // Clear the session ID on the client side
+
+            // Clear the messages to reset the conversation display
+            messages = [];
+
+            // Optionally, reset other states as needed
+            // ...
+        } else {
+            console.error('Failed to reset session');
+        }
+    } catch (error) {
+        console.error('Error resetting session:', error);
+    }
+}
+
+
+
+async function send() {
+    if (!question.trim().length) {
+        return;
+    }
+    
+    // Fetch the latest session ID before sending the message
+    await fetchSessionId();
+    
+    appState = "receiving";
+    addMessage("me", question, ragMode);
+    const messageId = addMessage("bot", "", ragMode);
+    
+    try {
+        const queryStreamUrl = `http://localhost:8504/query-stream?session_id=${sessionId}&text=${encodeURI(question)}&rag=${ragMode}`;
+        const evt = new EventSource(queryStreamUrl);
+        question = "";
+
+        evt.onmessage = (e) => {
+            if (e.data) {
+                const data = JSON.parse(e.data);
+                if (data.init) {
+                    updateMessage(messageId, "", data.model);
+                    return;
+                } else if (data.end) {
+                    // Set flag when the final message is received
+                    streamEndedNormally = true;
+                    return;
                 }
-            };
-            evt.onerror = (e) => {
-                // Stream will end with an error
-                // and we want to close the connection on end (otherwise it will keep reconnecting)
-                evt.close();
-            };
-        } catch (e) {
-            updateMessage(messageId, "Error: " + e.message);
-        } finally {
-            appState = "idle";
-        }
+                updateMessage(messageId, data.token);
+            }
+        };
+        
+        evt.onerror = () => {
+            if (!streamEndedNormally) {
+                // Handle actual errors
+                updateMessage(messageId, "Error: Stream closed unexpectedly.");
+            } else {
+                console.log("Stream closed normally.");
+            }
+            evt.close(); // Close the event source
+        };
+    } catch (e) {
+        updateMessage(messageId, "Error: " + e.message);
+    } finally {
+        appState = "idle";
+    }
+}
+
+    function decodeHtmlEntities(text) {
+        var textArea = document.createElement('textarea');
+        textArea.innerHTML = text;
+        return textArea.value;
     }
 
     function updateMessage(existingId, text, model = null) {
@@ -55,7 +117,8 @@
         if (existingIdIndex === -1) {
             return;
         }
-        messages[existingIdIndex].text += text;
+        // Decode HTML entities before appending
+        messages[existingIdIndex].text += decodeHtmlEntities(text);
         if (model) {
             messages[existingIdIndex].model = model;
         }
@@ -130,6 +193,10 @@
                             <input type="radio" bind:group={ragMode} value={true} /> Enabled
                         </label>
                     </div>
+                    <!-- Reset Session Button -->
+                    <button class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-4 rounded" on:click={resetSession}>
+                        Neue Konversation starten
+                    </button>
                 </div>
                 <form class="rounded-md w-full bg-white p-2 m-0" on:submit|preventDefault={send}>
                     <input
@@ -144,6 +211,8 @@
         </div>
     </div>
 </main>
+
+
 
 <style>
     :global(pre) {

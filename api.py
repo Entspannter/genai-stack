@@ -26,7 +26,8 @@ import uuid
 from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
     AgentTokenBufferMemory,
 )
-from fastapi import FastAPI, Response, Request
+from fastapi import FastAPI, Response, Request, Cookie
+
 print("starting api.py")
 load_dotenv(".env")
 
@@ -52,50 +53,6 @@ create_vector_index(neo4j_graph, dimension)
 llm = load_llm(
     llm_name, logger=BaseLogger(), config={"ollama_base_url": ollama_base_url}
 )
-
-def set_session_id(response: Response, value: str):
-    """Helper function to set a cookie."""
-    response.set_cookie(key="session_id", value=value)
-    return response
-
-def get_session_id(request: Request) -> str:
-    """Helper function to retrieve a cookie."""
-    return request.cookies.get("session_id", None)
-
-def get_or_create_session(request: Request, session_id: str = Cookie(None), llm=llm):
-    """
-    Retrieve or create a session in Neo4J.
-    """
-    session_id = request.cookies.get("session_id")
-    print("get_or_create_session session_id", session_id)
-    response = Response()
-    if session_id is None:
-        # Create new session
-        session_id = str(uuid.uuid4())
-        response = set_session_id(response, session_id)
-        print("response header:", response.headers)
-        print("get session id", request.headers)
-        # TODO: connect to user name and time stamp (to make it very!!! unique)
-        neo4j_graph.query("CREATE (s:Session {id: $session_id, chat_history: $chat_history})", params = {"session_id":session_id, "chat_history":json.dumps([])})
-        message_history = Neo4jChatMessageHistory(session_id, url, username, password )
-        MEMORY_KEY = "chat_history"
-        memory = AgentTokenBufferMemory(memory_key=MEMORY_KEY, llm=llm, chat_memory=message_history)
-        
-    else:
-        message_history = Neo4jChatMessageHistory(session_id, url, username, password )
-
-        MEMORY_KEY = "chat_history"
-        memory = AgentTokenBufferMemory(memory_key=MEMORY_KEY, llm=llm, chat_memory=message_history)
-
-    return session_id, memory, response
-
-
-#session_id, memory = get_or_create_session()
-
-llm_chain = configure_llm_only_chain(llm)
-# rag_chain = configure_qa_rag_chain(
-#     llm, embeddings, embeddings_store_url=url, username=username, password=password, memory= memory
-# )
 
 
 class QueueCallback(BaseCallbackHandler):
@@ -136,7 +93,7 @@ def stream(cb, q) -> Generator:
 
 
 app = FastAPI()
-origins = ["http://localhost:8505"]#["*"]
+origins = ["http://localhost:8505", "http://127.0.0.1:8505"]  # ["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -151,6 +108,7 @@ app.add_middleware(
 async def root():
     return {"message": "Hello World"}
 
+
 class Question(BaseModel):
     text: str
     rag: bool = False
@@ -161,50 +119,181 @@ class BaseTicket(BaseModel):
 
 
 @app.get("/query-stream")
-def qstream(request: Request, question: Question = Depends()):
-    session_id, chat_history, response = get_or_create_session(request)
-    rag_chain = configure_qa_rag_chain(
-    llm, embeddings, embeddings_store_url=url, username=username, password=password, memory= chat_history
-)
+async def qstream(session_id: str, question: Question = Depends()):
+    # Use session_id to fetch the relevant chat history or data from the database
+    message_history = Neo4jChatMessageHistory(session_id, url, username, password)
+    MEMORY_KEY = "chat_history"
+    memory = AgentTokenBufferMemory(
+        memory_key=MEMORY_KEY, llm=llm, chat_memory=message_history
+    )
 
-    output_function = llm_chain
-    if question.rag:
-        output_function = rag_chain
+    # Configure the QA RAG chain or default output function
+    rag_chain = configure_qa_rag_chain(
+        llm,
+        embeddings,
+        embeddings_store_url=url,
+        username=username,
+        password=password,
+        memory=memory,
+    )
+    output_function = llm_chain if not question.rag else rag_chain
 
     q = Queue()
 
     def cb():
+        # Pass the necessary data to the output function
         output_function(
-            {"input": question.text, "chat_history": []},
+            {"input": question.text, "chat_history": memory.chat_memory.messages},
             callbacks=[QueueCallback(q)],
         )
 
     def generate():
+        # Initialize the stream
         yield json.dumps({"init": True, "model": llm_name})
+        # Stream the data
         for token, _ in stream(cb, q):
             yield json.dumps({"token": token})
+        yield json.dumps({"end": True})
 
+    # Return an event source response for SSE
     return EventSourceResponse(generate(), media_type="text/event-stream")
 
 
 @app.get("/query")
-async def ask(request: Request, question: Question = Depends(), chat_history: list = Depends()):
-    session_id, chat_history, response = get_or_create_session(request)
-    print("chat_history /query", chat_history.chat_memory.messages)
+async def ask(
+    response: Response,
+    request: Request,
+    question: Question = Depends(),
+    chat_history: list = Depends(),
+):
+    # Extract session_id from cookie
+    session_id_from_cookie = request.cookies.get("session_id")
+
+    # Get or create session and chat history
+    session_id, memory = get_or_create_session(
+        session_id=session_id_from_cookie,
+        llm=llm,  # Assuming llm is defined elsewhere in your app
+        neo4j_graph=neo4j_graph,  # Assuming neo4j_graph is your Neo4j connection
+        url=url,  # Neo4j URL
+        username=username,  # Neo4j username
+        password=password,  # Neo4j password
+    )
+    print("chat_history /query", memory.chat_memory.messages)
     print("session_id /query", session_id)
+    if session_id_from_cookie != session_id:
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            httponly=True,
+            max_age=1800,
+            path="/",
+            samesite="lax",
+        )
+
+    # Configure the QA RAG chain or use the default output function
     rag_chain = configure_qa_rag_chain(
-    llm, embeddings, embeddings_store_url=url, username=username, password=password, memory= chat_history
-)
-    output_function = llm_chain
-    if question.rag:
-        output_function = rag_chain
-    
-    chat_history[0].append(question.text)
+        llm,
+        embeddings,
+        embeddings_store_url=url,
+        username=username,
+        password=password,
+        memory=memory,
+    )
+    output_function = llm_chain if not question.rag else rag_chain
+
+    # Append the current question to the chat history
+    memory.chat_memory.messages.append(question.text)
+
+    # Execute the output function
     result = output_function(
-        {"question": question.text, "chat_history": chat_history}, callbacks=[]
+        {"question": question.text, "chat_history": memory.chat_memory.messages},
+        callbacks=[],
     )
 
     # Update the session with the new chat history in Neo4J
-    neo4j_graph.query("MATCH (s:Session {id: $session_id}) SET s.chat_history = $chat_history", params = {"session_id":chat_history, "chat_history":json.dumps(chat_history)})
+    neo4j_graph.query(
+        "MATCH (s:Session {id: $session_id}) SET s.chat_history = $chat_history",
+        params={
+            "session_id": session_id,
+            "chat_history": json.dumps(memory.chat_memory.messages),
+        },
+    )
 
+    # Return the result
     return {"result": result["output"], "model": llm_name, "session_id": session_id}
+
+
+def get_or_create_session(session_id: str, llm, neo4j_graph, url, username, password):
+    """
+    Retrieve or create a session in Neo4J. If no session_id is provided, a new session
+    is created. The function connects to a Neo4J database to record the session.
+
+    :param session_id: The current session ID, if available.
+    :param llm: A parameter specific to your application's logic.
+    :param neo4j_graph: The Neo4j graph object for database interaction.
+    :param url: Neo4j database URL.
+    :param username: Neo4j database username.
+    :param password: Neo4j database password.
+    :return: A tuple containing the session_id and a memory object.
+    """
+    # Create a new session if no session_id is provided
+    if session_id is None:
+        session_id = str(uuid.uuid4())
+        # Insert the new session into Neo4j database
+        neo4j_graph.query(
+            "CREATE (s:Session {id: $session_id, chat_history: $chat_history})",
+            params={"session_id": session_id, "chat_history": json.dumps([])},
+        )
+
+    # Common logic for both new and existing sessions
+    message_history = Neo4jChatMessageHistory(session_id, url, username, password)
+    MEMORY_KEY = "chat_history"
+    memory = AgentTokenBufferMemory(
+        memory_key=MEMORY_KEY, llm=llm, chat_memory=message_history
+    )
+
+    return session_id, memory
+
+
+@app.get("/manage-session")
+async def manage_session(response: Response, request: Request):
+    # Extract session_id from cookie
+    session_id_from_cookie = request.cookies.get("session_id")
+    print("session_id_from_cookie", session_id_from_cookie)
+
+    # Get or create session and chat history
+    session_id, memory = get_or_create_session(
+        session_id=session_id_from_cookie,
+        llm=llm,  # Assuming llm is defined elsewhere in your app
+        neo4j_graph=neo4j_graph,  # Neo4j connection
+        url=url,  # Neo4j URL
+        username=username,  # Neo4j username
+        password=password,  # Neo4j password
+    )
+    print("new session_id", session_id)
+
+    # Set or update the session_id cookie
+    if session_id_from_cookie != session_id:
+        response.set_cookie(
+            key="session_id",
+            value=session_id,
+            httponly=True,
+            max_age=1800,
+            path="/",
+            samesite="lax",
+        )
+
+    # Return some response, e.g., confirmation or the session ID
+    return {"session_id": session_id}
+
+
+@app.post("/reset-session")
+async def reset_session(response: Response):
+    # Reset the session_id cookie
+    response.delete_cookie(key="session_id")
+    return {"message": "Session reset"}
+
+
+# session_id, memory = get_or_create_session()
+
+llm_chain = configure_llm_only_chain(llm)
