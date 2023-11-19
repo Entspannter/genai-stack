@@ -13,7 +13,7 @@ from chains import (
     configure_llm_only_chain,
     configure_qa_rag_chain,
 )
-from fastapi import FastAPI, Depends, Cookie, HTTPException
+from fastapi import FastAPI, Depends, Cookie, HTTPException, Response, Request
 from pydantic import BaseModel
 from langchain.callbacks.base import BaseCallbackHandler
 from threading import Thread
@@ -26,7 +26,6 @@ import uuid
 from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
     AgentTokenBufferMemory,
 )
-from fastapi import FastAPI, Response, Request, Cookie
 
 print("starting api.py")
 load_dotenv(".env")
