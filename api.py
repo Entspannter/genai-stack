@@ -27,7 +27,7 @@ from langchain.agents.openai_functions_agent.agent_token_buffer_memory import (
     AgentTokenBufferMemory,
 )
 from fastapi import FastAPI, Response, Request
-
+print("starting api.py")
 load_dotenv(".env")
 
 url = os.getenv("NEO4J_URI")
@@ -56,39 +56,46 @@ llm = load_llm(
 def set_session_id(response: Response, value: str):
     """Helper function to set a cookie."""
     response.set_cookie(key="session_id", value=value)
+    return response
 
 def get_session_id(request: Request) -> str:
     """Helper function to retrieve a cookie."""
     return request.cookies.get("session_id", None)
 
-def get_or_create_session(session_id: str = Cookie(None), llm=llm):
+def get_or_create_session(request: Request, session_id: str = Cookie(None), llm=llm):
     """
     Retrieve or create a session in Neo4J.
     """
-    session_id = get_session_id(request = Request)
+    session_id = request.cookies.get("session_id")
+    print("get_or_create_session session_id", session_id)
+    response = Response()
     if session_id is None:
         # Create new session
         session_id = str(uuid.uuid4())
-        set_session_id(response= Response, value = session_id)
+        response = set_session_id(response, session_id)
+        print("response header:", response.headers)
+        print("get session id", request.headers)
         # TODO: connect to user name and time stamp (to make it very!!! unique)
-        neo4j_graph.run("CREATE (s:Session {id: $session_id, chat_history: $chat_history})", session_id=session_id, chat_history=json.dumps([]))
+        neo4j_graph.query("CREATE (s:Session {id: $session_id, chat_history: $chat_history})", params = {"session_id":session_id, "chat_history":json.dumps([])})
         message_history = Neo4jChatMessageHistory(session_id, url, username, password )
         MEMORY_KEY = "chat_history"
-        memory = AgentTokenBufferMemory(memory_key=MEMORY_KEY, llm=llm, chat_memory=chat_history)
+        memory = AgentTokenBufferMemory(memory_key=MEMORY_KEY, llm=llm, chat_memory=message_history)
+        
     else:
         message_history = Neo4jChatMessageHistory(session_id, url, username, password )
 
         MEMORY_KEY = "chat_history"
         memory = AgentTokenBufferMemory(memory_key=MEMORY_KEY, llm=llm, chat_memory=message_history)
 
-    return session_id, memory
+    return session_id, memory, response
 
 
-session_id, memory = get_or_create_session()
+#session_id, memory = get_or_create_session()
+
 llm_chain = configure_llm_only_chain(llm)
-rag_chain = configure_qa_rag_chain(
-    llm, embeddings, embeddings_store_url=url, username=username, password=password, memory= memory
-)
+# rag_chain = configure_qa_rag_chain(
+#     llm, embeddings, embeddings_store_url=url, username=username, password=password, memory= memory
+# )
 
 
 class QueueCallback(BaseCallbackHandler):
@@ -129,7 +136,7 @@ def stream(cb, q) -> Generator:
 
 
 app = FastAPI()
-origins = ["*"]
+origins = ["http://localhost:8505"]#["*"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -154,7 +161,12 @@ class BaseTicket(BaseModel):
 
 
 @app.get("/query-stream")
-def qstream(question: Question = Depends()):
+def qstream(request: Request, question: Question = Depends()):
+    session_id, chat_history, response = get_or_create_session(request)
+    rag_chain = configure_qa_rag_chain(
+    llm, embeddings, embeddings_store_url=url, username=username, password=password, memory= chat_history
+)
+
     output_function = llm_chain
     if question.rag:
         output_function = rag_chain
@@ -163,7 +175,7 @@ def qstream(question: Question = Depends()):
 
     def cb():
         output_function(
-            {"question": question.text, "chat_history": []},
+            {"input": question.text, "chat_history": []},
             callbacks=[QueueCallback(q)],
         )
 
@@ -176,17 +188,23 @@ def qstream(question: Question = Depends()):
 
 
 @app.get("/query")
-async def ask(question: Question = Depends(), chat_history: list = Depends(get_or_create_session)):
+async def ask(request: Request, question: Question = Depends(), chat_history: list = Depends()):
+    session_id, chat_history, response = get_or_create_session(request)
+    print("chat_history /query", chat_history.chat_memory.messages)
+    print("session_id /query", session_id)
+    rag_chain = configure_qa_rag_chain(
+    llm, embeddings, embeddings_store_url=url, username=username, password=password, memory= chat_history
+)
     output_function = llm_chain
     if question.rag:
         output_function = rag_chain
     
     chat_history[0].append(question.text)
     result = output_function(
-        {"question": question.text, "chat_history": chat_history[0]}, callbacks=[]
+        {"question": question.text, "chat_history": chat_history}, callbacks=[]
     )
 
     # Update the session with the new chat history in Neo4J
-    neo4j_graph.run("MATCH (s:Session {id: $session_id}) SET s.chat_history = $chat_history", session_id=chat_history[1], chat_history=json.dumps(chat_history[0]))
+    neo4j_graph.query("MATCH (s:Session {id: $session_id}) SET s.chat_history = $chat_history", params = {"session_id":chat_history, "chat_history":json.dumps(chat_history)})
 
-    return {"result": result["output"], "model": llm_name, "session_id": chat_history[1]}
+    return {"result": result["output"], "model": llm_name, "session_id": session_id}
