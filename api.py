@@ -1,5 +1,5 @@
 import os
-
+from datetime import datetime
 from langchain.graphs import Neo4jGraph
 from dotenv import load_dotenv
 from utils import (
@@ -242,8 +242,11 @@ def get_or_create_session(session_id: str, llm, neo4j_graph, url, username, pass
         session_id = str(uuid.uuid4())
         # Insert the new session into Neo4j database
         neo4j_graph.query(
-            "CREATE (s:Session {id: $session_id, chat_history: $chat_history})",
-            params={"session_id": session_id, "chat_history": json.dumps([])},
+            "CREATE (s:Session {id: $session_id, timestamp: $timestamp})",
+            params={
+                "session_id": session_id,
+                "timestamp": str(datetime.now()),
+            },  # TODO: Add User in the future
         )
 
     # Common logic for both new and existing sessions
@@ -283,7 +286,6 @@ async def manage_session(response: Response, request: Request):
             path="/",
             samesite="lax",
         )
-
     # Return some response, e.g., confirmation or the session ID
     return {"session_id": session_id}
 

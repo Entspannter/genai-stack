@@ -103,7 +103,7 @@ async function send() {
         appState = "idle";
     }
 }
-function updateMessage(existingId, text, model = null) {
+    function updateMessage(existingId, text, model = null) {
         if (!existingId) {
             return;
         }
