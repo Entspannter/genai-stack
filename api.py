@@ -138,6 +138,8 @@ async def qstream(session_id: str, question: Question = Depends()):
     output_function = llm_chain if not question.rag else rag_chain
 
     q = Queue()
+    print("chat history complete /query-stream", memory)
+    print("chat_history /query-stream", memory.chat_memory.messages)
 
     def cb():
         # Pass the necessary data to the output function

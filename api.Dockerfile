@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 
 RUN pip install --upgrade -r requirements.txt
+ADD other_utils/messages.py /usr/local/lib/python3.11/site-packages/langchain/schema/messages.py
 
 COPY api.py .
 COPY utils.py .

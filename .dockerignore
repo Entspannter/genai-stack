@@ -4,4 +4,5 @@
 !images/*
 !front-end/*
 !example_studies/*
+!other_utils/*
 front-end/node_modules/*
