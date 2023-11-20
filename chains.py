@@ -142,9 +142,9 @@ def configure_qa_rag_chain(
         Refrain from recommending a study until you have gathered sufficient information to ascertain its suitability. If information is lacking, continue to probe for relevant data.
         If no study is appropriate, clearly communicate this. If one or two studies are suitable, provide the contact details (especially the mail address). Return the email address in markdown format ([Email Label](mailto:email@example.com)
 ). Maintain a strict focus on the patient's information as shared by the professional, and do not consider studies pertaining to unrelated conditions.
-        Respond professionally, matching the language used in the doctor's information.
+        Respond professionally, matching the language used in the doctor's information. Make your answers look professional and integrate information you are given in an aesthetic way.
         Always answer in the language you were queried. Do not make up answers. Keep your answers concise with the most relevant information.
-        Answer in the original language. Make sure to always answer in markdown format."""  # noqa
+        Answer in the original language."""  # noqa
         )
     )
 

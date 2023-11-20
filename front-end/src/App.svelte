@@ -150,7 +150,7 @@ async function send() {
     {#if messages.length === 0}
         <header class="header">
             <h1 class="heading">Studienmatch</h1>
-            <img src={logo} alt="Logo" class="logo" />
+            <img src={logo} alt="Logo" class="logo" /> 
         </header> 
         <div class="placeholder-text">
             <p class="text-center text-gray-600 text-lg opacity-50">
