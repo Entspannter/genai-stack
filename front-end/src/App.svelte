@@ -4,6 +4,7 @@
     import botImage from "./assets/images/bot.png"; //update
     import meImage from "./assets/images/questionmark.png"; //update to user_avatar in the future
     import MdLink from "./lib/MdLink.svelte";
+    import Logo from "./assets/images/CSD.png";
 
 
     let messages = [];
@@ -16,6 +17,7 @@
     let sessionId = '';
     let streamEndedNormally = false;
     let placeholderText = "Fangen Sie an zu tippen und finden Sie die besten Studien für Ihre PatientInnen.\n Beenden Sie Ihre Nachricht mit der Eingabetaste.";
+    let logo = Logo;
 
 
     async function fetchSessionId() {
@@ -146,13 +148,16 @@ async function send() {
 
 <main class="h-full text-sm bg-gradient-to-t from-indigo-100 bg-fixed overflow-hidden">
     {#if messages.length === 0}
-    <!-- Placeholder text when no messages are present -->
-    <div class="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center">
-        <p class="text-center text-gray-600 text-lg opacity-50">
-            {placeholderText}
-        </p>
-    </div>
-{/if}
+        <header class="header">
+            <h1 class="heading">Studienmatch</h1>
+            <img src={logo} alt="Logo" class="logo" />
+        </header> 
+        <div class="placeholder-text">
+            <p class="text-center text-gray-600 text-lg opacity-50">
+                {placeholderText}
+            </p>
+        </div>
+    {/if}
     <div on:scroll={scrolling} class="flex h-full flex-col py-12 overflow-y-auto" use:scrollToBottom={messages}>
         <div class="w-4/5 mx-auto flex flex-col mb-32">
             {#each messages as message (message.id)}

@@ -26,3 +26,29 @@ ol {
   padding: 1em;
   list-style: decimal;
 }
+
+.header {
+  text-align: center; /* Center the content */
+  padding: 20px; /* Add some padding around */
+}
+
+.logo {
+  max-width: 200px; /* Adjust based on your preference */
+  height: auto; /* Maintain aspect ratio */
+  margin: 0 auto; /* Center the logo horizontally */
+}
+
+.heading {
+  font-family: 'Roboto', sans-serif;
+  font-weight: 700;
+  margin-top: 10px; /* Space between logo and heading */
+  font-size: 1.5em; /* Adjust the font size as needed */
+}
+
+.placeholder-text {
+  position: absolute;
+  top: 50%; /* Center vertically */
+  left: 0;
+  right: 0;
+  transform: translateY(-50%); /* Adjust for exact vertical centering */
+}
