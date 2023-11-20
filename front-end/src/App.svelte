@@ -182,7 +182,11 @@ async function send() {
                         </div>
                     </div>
                 {/if}
-                <div class="mt-4"><SvelteMarkdown source={message.text} renderers={{ link: MdLink }} /></div>
+                <div class="mt-4"><SvelteMarkdown source={message.text} renderers={{ link: MdLink }} options={{
+                    async: true,
+                    pedantic: false,
+                    gfm: true,
+                  }} /></div>
             </div>
         {/each}        
         </div>

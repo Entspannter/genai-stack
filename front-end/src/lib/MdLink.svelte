@@ -14,8 +14,8 @@
 </script>
 
 {#if isEmail}
-    <!-- Render email address as plain text -->
-    <span>{text || emailAddress}</span>
+    <!-- Render email address as a clickable mailto link -->
+    <a href={`mailto:${emailAddress}`} {title} target="_blank" rel="noreferrer noopener">{text || emailAddress}</a>
 {:else}
     <!-- For other links, render as a clickable hyperlink -->
     <a href={href} {title} target="_blank" rel="noreferrer noopener">{text}</a>
