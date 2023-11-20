@@ -1,7 +1,7 @@
 <script>
     import { tick } from "svelte";
     import SvelteMarkdown from "svelte-markdown";
-    import botImage from "./assets/images/bot.png"; //update
+    import botImage from "./assets/images/bot.png";
     import meImage from "./assets/images/questionmark.png"; //update to user_avatar in the future
     import MdLink from "./lib/MdLink.svelte";
     import Logo from "./assets/images/CSD.png";
