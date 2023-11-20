@@ -32,9 +32,8 @@ from langchain.agents.openai_functions_agent.base import OpenAIFunctionsAgent
 from langchain.agents import AgentExecutor
 from langchain.agents import AgentExecutor
 
-def load_embedding_model(
-    embedding_model_name: str, logger=BaseLogger(), config={}
-):
+
+def load_embedding_model(embedding_model_name: str, logger=BaseLogger(), config={}):
     if embedding_model_name == "ollama":
         embeddings = OllamaEmbeddings(
             base_url=config["ollama_base_url"], model="llama2"
@@ -57,12 +56,12 @@ def load_embedding_model(
 def load_llm(llm_name: str, logger=BaseLogger(), config={}):
     if llm_name == "gpt-4":
         logger.info("LLM: Using GPT-4")
-        return ChatOpenAI(temperature=0, model_name="gpt-4", streaming=True)
+        return ChatOpenAI(
+            temperature=0, model_name="gpt-4-1106-preview", streaming=True
+        )
     elif llm_name == "gpt-3.5":
         logger.info("LLM: Using GPT-3.5")
-        return ChatOpenAI(
-            temperature=0, model_name="gpt-3.5-turbo", streaming=True
-        )
+        return ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo", streaming=True)
     elif len(llm_name):
         logger.info(f"LLM: Using Ollama: {llm_name}")
         return ChatOllama(
@@ -76,9 +75,7 @@ def load_llm(llm_name: str, logger=BaseLogger(), config={}):
             num_ctx=3072,  # Sets the size of the context window used to generate the next token.
         )
     logger.info("LLM: Using GPT-3.5")
-    return ChatOpenAI(
-        temperature=0, model_name="gpt-3.5-turbo", streaming=True
-    )
+    return ChatOpenAI(temperature=0, model_name="gpt-3.5-turbo", streaming=True)
 
 
 def configure_llm_only_chain(llm):
@@ -89,9 +86,7 @@ def configure_llm_only_chain(llm):
     """
     system_message_prompt = SystemMessagePromptTemplate.from_template(template)
     human_template = "{question}"
-    human_message_prompt = HumanMessagePromptTemplate.from_template(
-        human_template
-    )
+    human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
     chat_prompt = ChatPromptTemplate.from_messages(
         [system_message_prompt, human_message_prompt]
     )
@@ -116,30 +111,30 @@ def configure_qa_rag_chain(
     password = "password"
 
     kg = Neo4jVector.from_existing_graph(
-            embedding=OpenAIEmbeddings(),
-            url=url,
-            username=username,
-            password=password,
-            database="neo4j",  # neo4j by default
-            index_name="study_data2",  # vector by default
-            node_label="Study",
-            text_node_properties=["name", "description"],
-            embedding_node_property="embedding",
+        embedding=OpenAIEmbeddings(),
+        url=url,
+        username=username,
+        password=password,
+        database="neo4j",  # neo4j by default
+        index_name="study_data2",  # vector by default
+        node_label="Study",
+        text_node_properties=["name", "description"],
+        embedding_node_property="embedding",
     )
 
     retriever = kg.as_retriever(search_kwargs={"k": 3})
 
     tool = create_retriever_tool(
-    retriever,
-    "search_clinical_study",
-    "Searches and returns clinical studies based on a patient description (this should be as detailed as possible). The tool returns the top 3 most relevant studies. At least 3 information about the patient are required to match a study.",
-)
+        retriever,
+        "search_clinical_study",
+        "Searches and returns clinical studies based on a patient description (this should be as detailed as possible). The tool returns the top 3 most relevant studies. At least 3 information about the patient are required to match a study.",
+    )
 
     tools = [tool]
 
     system_message = SystemMessage(
-    content=(
-        """You are an attentive and thorough AI chat assistant, supporting healthcare professionals by identifying the most relevant clinical studies for their patients.
+        content=(
+            """You are an attentive and thorough AI chat assistant, supporting healthcare professionals by identifying the most relevant clinical studies for their patients.
         A doctor will enter information about a patient and you will be presented with a set of studies that might be suitable. Engage in a conversation to find the most suitable studies.
         Ask questions about the patient to identify the optimal study. Do not reveal names of studies unless you are certain they are a match. Do not mention studies that might not be a match.
         Your mission is not to summarize, but to critically analyze each study based on the patient's condition and requirements.
@@ -150,8 +145,8 @@ def configure_qa_rag_chain(
         Respond professionally, matching the language used in the doctor's information.
         Always answer in the language you were queried. Do not make up answers. Keep your answers concise with the most relevant information.
         Answer in the original language."""
+        )
     )
-)
 
     MEMORY_KEY = "chat_history"
 
@@ -161,12 +156,11 @@ def configure_qa_rag_chain(
     )
     agent = OpenAIFunctionsAgent(llm=llm, tools=tools, prompt=prompt)
 
-
     agent_executor = AgentExecutor(
         agent=agent,
         tools=tools,
         memory=memory,
-        #verbose=True,
+        # verbose=True,
         return_intermediate_steps=True,
     )
 

@@ -8,13 +8,14 @@
 
     let messages = [];
     let ragMode = true;
-    let question = "34-Jährige MS Patientin mit RRMS seit 3 Jahren, aktuell Neueinstellung mit Cladribin";
+    let question = "Beispiel: 34-Jährige MS Patientin mit RRMS seit 3 Jahren, aktuell Neueinstellung mit Cladribin";
     let shouldAutoScroll = true;
     let input;
     let appState = "idle"; // or receiving
     let senderImages = { bot: botImage, me: meImage };
     let sessionId = '';
     let streamEndedNormally = false;
+    let placeholderText = "Fangen Sie an zu tippen und finden Sie die besten Studien für Ihre PatientInnen.\n Beenden Sie Ihre Nachricht mit der Eingabetaste.";
 
 
     async function fetchSessionId() {
@@ -68,7 +69,7 @@ async function send() {
     const messageId = addMessage("bot", "", ragMode);
     
     try {
-        const queryStreamUrl = `http://localhost:8504/query-stream?session_id=${sessionId}&text=${encodeURI(question)}&rag=${ragMode}`;
+        const queryStreamUrl = `http://localhost:8504/query-stream?session_id=${sessionId}&text=${encodeURI(question)}&rag=true`;
         const evt = new EventSource(queryStreamUrl);
         question = "";
 
@@ -102,14 +103,7 @@ async function send() {
         appState = "idle";
     }
 }
-
-    function decodeHtmlEntities(text) {
-        var textArea = document.createElement('textarea');
-        textArea.innerHTML = text;
-        return textArea.value;
-    }
-
-    function updateMessage(existingId, text, model = null) {
+function updateMessage(existingId, text, model = null) {
         if (!existingId) {
             return;
         }
@@ -117,13 +111,13 @@ async function send() {
         if (existingIdIndex === -1) {
             return;
         }
-        // Decode HTML entities before appending
-        messages[existingIdIndex].text += decodeHtmlEntities(text);
+        messages[existingIdIndex].text += text;
         if (model) {
             messages[existingIdIndex].model = model;
         }
         messages = messages;
     }
+
 
     function addMessage(from, text, rag) {
         const newId = Math.random().toString(36).substring(2, 9);
@@ -151,48 +145,50 @@ async function send() {
 </script>
 
 <main class="h-full text-sm bg-gradient-to-t from-indigo-100 bg-fixed overflow-hidden">
+    {#if messages.length === 0}
+    <!-- Placeholder text when no messages are present -->
+    <div class="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center">
+        <p class="text-center text-gray-600 text-lg opacity-50">
+            {placeholderText}
+        </p>
+    </div>
+{/if}
     <div on:scroll={scrolling} class="flex h-full flex-col py-12 overflow-y-auto" use:scrollToBottom={messages}>
         <div class="w-4/5 mx-auto flex flex-col mb-32">
             {#each messages as message (message.id)}
-                <div
-                    class="max-w-[80%] min-w-[40%] rounded-lg p-4 mb-4 overflow-x-auto bg-white border border-indigo-200"
-                    class:self-end={message.from === "me"}
-                    class:text-right={message.from === "me"}
-                >
-                    <div class="flex flex-row items-start gap-2">
-                        <div
-                            class:ml-auto={message.from === "me"}
-                            class="relative w-12 h-12 border border-indigo-200 rounded-lg flex justify-center items-center"
-                        >
-                            <img
-                                src={senderImages[message.from]}
-                                alt=""
-                                class="w-12 h-12 absolute top-0 left-0 rounded-lg"
-                            />
+            <div
+                class="max-w-[80%] min-w-[40%] rounded-lg p-4 mb-4 overflow-x-auto bg-white border border-indigo-200"
+                class:self-end={message.from === "me"}
+                class:text-right={message.from === "me"}
+            >
+                {#if message.from === "me"}
+                    <!-- Flex container for "BenutzerIn" label and image for "me" messages -->
+                    <div class="flex justify-end items-center gap-2">
+                        <div class="text-sm font-bold">BenutzerIn</div>
+                        <div class="w-12 h-12">
+                            <img src={senderImages[message.from]} alt="" class="w-full h-full rounded-lg" />
                         </div>
-                        {#if message.from === "bot"}
-                            <div class="text-sm">
-                                <div>Model: {message.model ? message.model : ""}</div>
-                                <div>RAG: {message.rag ? "Enabled" : "Disabled"}</div>
-                            </div>
-                        {/if}
                     </div>
-                    <div class="mt-4"><SvelteMarkdown source={message.text} renderers={{ link: MdLink }} /></div>
-                </div>
-            {/each}
+                {/if}
+                {#if message.from === "bot"}
+                    <!-- Container for bot image and information remains unchanged -->
+                    <div class="flex flex-row items-center gap-2">
+                        <div class="w-12 h-12">
+                            <img src={senderImages[message.from]} alt="" class="w-full h-full rounded-lg" />
+                        </div>
+                        <div class="text-sm">
+                            <div><b>Clinical Study Bot</b></div>
+                            <div>Model: {message.model ? message.model : ""}</div>
+                        </div>
+                    </div>
+                {/if}
+                <div class="mt-4"><SvelteMarkdown source={message.text} renderers={{ link: MdLink }} /></div>
+            </div>
+        {/each}        
         </div>
         <div class="text-sm w-full fixed bottom-16">
             <div class="shadow-lg bg-indigo-50 rounded-lg w-4/5 xl:w-2/3 2xl:w-1/2 mx-auto">
                 <div class="rounded-t-lg px-4 py-2 font-light">
-                    <div class="font-semibold">RAG mode</div>
-                    <div class="">
-                        <label class="mr-2">
-                            <input type="radio" bind:group={ragMode} value={false} /> Disabled
-                        </label>
-                        <label>
-                            <input type="radio" bind:group={ragMode} value={true} /> Enabled
-                        </label>
-                    </div>
                     <!-- Reset Session Button -->
                     <button class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-4 rounded" on:click={resetSession}>
                         Neue Konversation starten
